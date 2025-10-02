@@ -2,7 +2,7 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Plus, Bell, RefreshCw, Moon, Sun } from 'lucide-react';
+import { Plus, RefreshCw, Moon, Sun } from 'lucide-react';
 import type { FamilyMember, Location } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useTheme } from 'next-themes';
@@ -45,10 +45,6 @@ export default function AppHeader({ groupName, groupMembers, onAddEvent }: AppHe
            <Button variant="ghost" size="icon" onClick={handleSync}>
             <RefreshCw className="h-5 w-5" />
             <span className="sr-only">Synchronisieren</span>
-          </Button>
-          <Button variant="ghost" size="icon">
-            <Bell className="h-5 w-5" />
-            <span className="sr-only">Benachrichtigungen</span>
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
