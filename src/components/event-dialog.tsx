@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useTransition, useEffect } from 'react';
+import React, { useState, useTransition, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -200,29 +200,33 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event
   }
 
   const toggleParticipant = (participantId: string) => {
-    const existingParticipant = participants.find(p => p.userId === participantId);
-    if (existingParticipant) {
-      setParticipants(prev => prev.filter(p => p.userId !== participantId));
-    } else {
-      const status: ParticipantStatus = participantId === me?.id ? 'accepted' : 'pending';
-      setParticipants(prev => [...prev, { userId: participantId, status }]);
-    }
+    setParticipants(prev => {
+        const isAlreadyParticipant = prev.some(p => p.userId === participantId);
+        if (isAlreadyParticipant) {
+            return prev.filter(p => p.userId !== participantId);
+        } else {
+            const status: ParticipantStatus = participantId === me?.id ? 'accepted' : 'pending';
+            return [...prev, { userId: participantId, status }];
+        }
+    });
   };
   
   const toggleGroup = (memberIds: readonly string[]) => {
-    if (memberIds.length === 0) return;
-    const participantIds = participants.map(p => p.userId);
-    const allSelected = memberIds.every(id => participantIds.includes(id));
-    
-    if (allSelected) {
-      setParticipants(prev => prev.filter(p => !memberIds.includes(p.userId)));
-    } else {
-      const newParticipants = memberIds
-        .filter(id => !participantIds.includes(id))
-        .map(id => ({ userId: id, status: (id === me?.id ? 'accepted' : 'pending') as ParticipantStatus }));
-      setParticipants(prev => [...prev, ...newParticipants]);
-    }
-  }
+      if (memberIds.length === 0) return;
+      const participantIds = new Set(participants.map(p => p.userId));
+      const allMembersInGroupAreParticipants = memberIds.every(id => participantIds.has(id));
+
+      if (allMembersInGroupAreParticipants) {
+          // Deselect all members of this group
+          setParticipants(prev => prev.filter(p => !memberIds.includes(p.userId)));
+      } else {
+          // Select all members of this group that are not already participants
+          const newParticipants = memberIds
+              .filter(id => !participantIds.has(id))
+              .map(id => ({ userId: id, status: (id === me?.id ? 'accepted' : 'pending') as ParticipantStatus }));
+          setParticipants(prev => [...prev, ...newParticipants]);
+      }
+  };
 
   const handleStatusChange = (userId: string, status: ParticipantStatus) => {
     setParticipants(prev => prev.map(p => p.userId === userId ? { ...p, status } : p));
@@ -230,6 +234,20 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event
 
 
   const selectedLocationName = locations.find(l => l.id === locationId)?.name || "Ort auswählen";
+
+  const getGroupMembers = (group: CalendarGroup) => {
+      if (group.id === 'all') {
+          return allFamilyMembers.map(m => m.id);
+      }
+      return group.members;
+  };
+  
+  const isGroupSelected = useMemo(() => (group: CalendarGroup) => {
+      const memberIds = getGroupMembers(group);
+      if (memberIds.length === 0) return false;
+      const participantIds = new Set(participants.map(p => p.userId));
+      return memberIds.every(id => participantIds.has(id));
+  }, [participants, allFamilyMembers]);
 
   return (
     <>
@@ -336,17 +354,13 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event
                   <PopoverContent className="w-[300px] p-0">
                     <div className="flex flex-col gap-1 p-2">
                        {calendarGroups.map(group => {
-                            if (group.members.length === 0) return null;
-                            const isAllSelected = group.id === 'all'
-                                ? allFamilyMembers.length > 0 && allFamilyMembers.every(m => participants.some(p => p.userId === m.id))
-                                : group.members.every(id => participants.some(p => p.userId === id));
-
+                            const memberIds = getGroupMembers(group);
                             return (
                                 <React.Fragment key={group.id}>
                                     <Label className="flex items-center gap-2 p-2 rounded-md hover:bg-accent font-semibold">
                                         <Checkbox
-                                            checked={isAllSelected}
-                                            onCheckedChange={() => toggleGroup(group.id === 'all' ? allFamilyMembers.map(m => m.id) : group.members)}
+                                            checked={isGroupSelected(group)}
+                                            onCheckedChange={() => toggleGroup(memberIds)}
                                         />
                                         <span>{group.name}</span>
                                     </Label>

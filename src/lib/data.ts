@@ -16,22 +16,7 @@ export const initialLocations: Omit<Location, 'id'>[] = [
 ];
 
 export const initialEvents: Omit<Event, 'id'>[] = [
-  {
-    title: 'Fußballtraining',
-    start: new Date(new Date(today).setHours(17, 0, 0, 0)),
-    end: new Date(new Date(today).setHours(18, 30, 0, 0)),
-    participants: [{userId: 'user-lukas', status: 'accepted'}],
-    locationId: 'loc1', // This will need to be dynamically linked
-    createdBy: 'user-lukas',
-  },
-  {
-    title: 'Zahnarzttermin',
-    start: new Date(new Date(tomorrow).setHours(10, 0, 0, 0)),
-    end: new Date(new Date(tomorrow).setHours(10, 30, 0, 0)),
-    participants: [{userId: 'user-lukas', status: 'pending'}],
-    locationId: 'loc2', // This will need to be dynamically linked
-    createdBy: 'user-lukas',
-  },
+  // Empty as requested
 ];
 
 export const initialTasks: Omit<Task, 'id'>[] = [
