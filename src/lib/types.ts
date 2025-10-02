@@ -43,9 +43,8 @@ export type ShoppingListItem = {
 
 export type DogPlanItem = {
   id: string;
-  title: string;
-  time: string;
+  day: 'Montag' | 'Dienstag' | 'Mittwoch' | 'Donnerstag' | 'Freitag' | 'Samstag' | 'Sonntag';
+  timeOfDay: 'Morgen' | 'Mittag' | 'Abend';
   assignedTo: FamilyMember['id'];
-  completed: boolean;
   calendarId: CalendarGroup['id'];
 };

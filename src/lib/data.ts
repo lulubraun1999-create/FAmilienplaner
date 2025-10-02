@@ -86,10 +86,12 @@ export const shoppingListItems: ShoppingListItem[] = [
 ];
 
 export const dogPlanItems: DogPlanItem[] = [
-    { id: 'd1', title: 'Morgens füttern', time: '07:00', assignedTo: 'dad', completed: true, calendarId: 'c_immediate' },
-    { id: 'd2', title: 'Morgens Gassi gehen', time: '07:30', assignedTo: 'dad', completed: true, calendarId: 'c_immediate' },
-    { id: 'd3', title: 'Abends füttern', time: '18:00', assignedTo: 'mom', completed: false, calendarId: 'c_immediate' },
-    { id: 'd4', title: 'Abends Gassi gehen', time: '18:30', assignedTo: 'mom', completed: false, calendarId: 'c_immediate' },
+    { id: 'd_mo_m', day: 'Montag', timeOfDay: 'Morgen', assignedTo: 'dad', calendarId: 'c_immediate' },
+    { id: 'd_mo_a', day: 'Montag', timeOfDay: 'Abend', assignedTo: 'mom', calendarId: 'c_immediate' },
+    { id: 'd_di_m', day: 'Dienstag', timeOfDay: 'Morgen', assignedTo: 'dad', calendarId: 'c_immediate' },
+    { id: 'd_di_a', day: 'Dienstag', timeOfDay: 'Abend', assignedTo: 'mom', calendarId: 'c_immediate' },
+    { id: 'd_mi_m', day: 'Mittwoch', timeOfDay: 'Morgen', assignedTo: 'sister', calendarId: 'c_immediate' },
+    { id: 'd_mi_a', day: 'Mittwoch', timeOfDay: 'Abend', assignedTo: 'me', calendarId: 'c_immediate' },
 ];
 
 
