@@ -9,7 +9,7 @@ import CalendarView from './calendar-view';
 import TaskList from './task-list';
 import ShoppingList from './shopping-list';
 import DogPlan from './dog-plan';
-import { initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems, initialLocations, calendarGroups, initialFamilyMembers } from '@/lib/data';
+import { initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems, initialLocations, calendarGroups } from '@/lib/data';
 import type { CalendarGroup, Event, Task, ShoppingListItem, FamilyMember, DogPlanItem, Location } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser, useDoc, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch, setDoc, getDocs, query, where, getDoc } from 'firebase/firestore';
@@ -40,6 +40,8 @@ export default function Dashboard() {
 
   const [calendarView, setCalendarView] = useState<CalendarViewType>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
+  
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
 
   const familyBasedRef = (collectionName: string) => useMemoFirebase(() => (firestore && familyName ? collection(firestore, `families/${familyName}/${collectionName}`) : null), [firestore, familyName]);
 
@@ -49,8 +51,6 @@ export default function Dashboard() {
   const dogPlanRef = familyBasedRef('dogPlan');
   const locationsRef = familyBasedRef('locations');
   
-  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>(initialFamilyMembers);
-
 
   const { data: eventsData, isLoading: eventsLoading } = useCollection<Event>(eventsRef);
   const { data: tasksData, isLoading: tasksLoading } = useCollection<Task>(tasksRef);
@@ -58,9 +58,37 @@ export default function Dashboard() {
   const { data: dogPlanData, isLoading: dogPlanLoading } = useCollection<DogPlanItem>(dogPlanRef);
   const { data: locationsData, isLoading: locationsLoading } = useCollection<Location>(locationsRef);
     
+  useEffect(() => {
+    const fetchFamilyMembers = async () => {
+      if (firestore && familyName) {
+        const usersQuery = query(collection(firestore, 'users'), where('familyName', '==', familyName));
+        try {
+          const querySnapshot = await getDocs(usersQuery);
+          const members = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FamilyMember));
+          setFamilyMembers(members);
+        } catch (serverError) {
+            const contextualError = new FirestorePermissionError({
+              operation: 'list',
+              path: 'users',
+            })
+            errorEmitter.emit('permission-error', contextualError);
+            console.error("Permission error fetching family members:", contextualError);
+        }
+      }
+    };
+
+    fetchFamilyMembers();
+  }, [firestore, familyName]);
+
+
     useEffect(() => {
     if (firestore && user && familyName && !eventsLoading && !isDataPopulated && eventsData?.length === 0) {
       const populateFirestore = async () => {
+        if (!familyName.startsWith('Familie-Butz-Braun')) {
+            setIsDataPopulated(true);
+            return;
+        }
+
         const populateRef = doc(firestore, `families/${familyName}/meta`, 'populated');
         const populateSnap = await getDoc(populateRef);
 
@@ -131,7 +159,19 @@ export default function Dashboard() {
 
 
   const handleOpenEventDialog = (event?: Event) => {
-    setSelectedEvent(event);
+    if (!event && user) {
+        // For new events, pre-fill the current user as a participant
+        const newEventTemplate: Partial<Event> = {
+            title: '',
+            participants: [user.uid], // Set current user as default participant
+            allDay: false,
+            start: new Date(),
+            end: new Date(new Date().getTime() + 60 * 60 * 1000), // 1 hour later
+        };
+        setSelectedEvent(newEventTemplate as Event);
+    } else {
+        setSelectedEvent(event);
+    }
     setIsEventDialogOpen(true);
   };
   
@@ -430,3 +470,5 @@ export default function Dashboard() {
     </>
   );
 }
+
+    
