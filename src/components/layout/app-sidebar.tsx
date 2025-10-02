@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Calendar, Users, User, LogOut } from 'lucide-react';
 import type { CalendarGroup, FamilyMember } from '@/lib/types';
@@ -11,6 +11,7 @@ import { useAuth, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 
+
 interface AppSidebarProps {
   calendarGroups: CalendarGroup[];
   selectedCalendarId: string;
@@ -18,9 +19,11 @@ interface AppSidebarProps {
   familyMembers: FamilyMember[];
   onUpdateProfile: (member: FamilyMember) => void;
   me: FamilyMember | undefined;
+  className?: string;
+  onLinkClick?: () => void;
 }
 
-export default function AppSidebar({ calendarGroups, selectedCalendarId, onCalendarChange, familyMembers, onUpdateProfile, me }: AppSidebarProps) {
+export function SidebarContent({ calendarGroups, selectedCalendarId, onCalendarChange, familyMembers, onUpdateProfile, me, onLinkClick }: AppSidebarProps) {
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
   const auth = useAuth();
   const { user } = useUser();
@@ -28,29 +31,35 @@ export default function AppSidebar({ calendarGroups, selectedCalendarId, onCalen
   
   const displayName = me?.name || user?.displayName || "Profil";
 
-
   const handleLogout = async () => {
     await signOut(auth);
     router.push('/login');
   };
 
+  const handleCalendarChange = (id: string) => {
+      onCalendarChange(id);
+      if (onLinkClick) {
+          onLinkClick();
+      }
+  }
+
   return (
     <>
-      <aside className="hidden w-64 flex-col border-r bg-card p-4 md:flex">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-1 flex-col">
+        <div className="flex items-center gap-2 p-4">
           <Calendar className="h-8 w-8 text-primary" />
           <h1 className="font-headline text-2xl font-bold">Vierklang</h1>
         </div>
 
-        <nav className="mt-8 flex-1">
+        <nav className="mt-4 flex-1 px-4">
           <h2 className="mb-2 text-sm font-semibold text-muted-foreground">Kalender</h2>
           <ul>
             <li>
               <button
-                onClick={() => onCalendarChange('all')}
+                onClick={() => handleCalendarChange('all')}
                 className={cn(
                   'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-secondary',
-                  selectedCalendarId === 'all' && 'bg-secondary'
+                  selectedCalendarId === 'all' && 'bg-accent font-semibold text-accent-foreground'
                 )}
               >
                 <Users className="h-4 w-4" />
@@ -59,7 +68,7 @@ export default function AppSidebar({ calendarGroups, selectedCalendarId, onCalen
             </li>
              <li>
               <button
-                onClick={() => onCalendarChange('my_calendar')}
+                onClick={() => handleCalendarChange('my_calendar')}
                 className={cn(
                   'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-secondary',
                   selectedCalendarId === 'my_calendar' && 'bg-secondary'
@@ -72,7 +81,7 @@ export default function AppSidebar({ calendarGroups, selectedCalendarId, onCalen
             {calendarGroups.map((group) => (
               <li key={group.id}>
                 <button
-                  onClick={() => onCalendarChange(group.id)}
+                  onClick={() => handleCalendarChange(group.id)}
                   className={cn(
                     'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-secondary',
                     selectedCalendarId === group.id && 'bg-secondary'
@@ -88,7 +97,7 @@ export default function AppSidebar({ calendarGroups, selectedCalendarId, onCalen
           </ul>
         </nav>
 
-        <div className="mt-auto space-y-2">
+        <div className="mt-auto space-y-2 p-4">
           <button className="flex w-full items-center gap-3 rounded-lg p-2 transition-colors hover:bg-secondary" onClick={() => setIsProfileDialogOpen(true)}>
               {me && (
                   <Avatar className="h-10 w-10">
@@ -105,7 +114,7 @@ export default function AppSidebar({ calendarGroups, selectedCalendarId, onCalen
             <span className="text-sm font-medium">Abmelden</span>
           </button>
         </div>
-      </aside>
+      </div>
       {me && (
         <ProfileDialog 
           isOpen={isProfileDialogOpen}
@@ -115,5 +124,14 @@ export default function AppSidebar({ calendarGroups, selectedCalendarId, onCalen
         />
       )}
     </>
+  );
+}
+
+
+export default function AppSidebar(props: AppSidebarProps) {
+  return (
+    <aside className={cn("hidden w-64 flex-col border-r bg-card md:flex", props.className)}>
+        <SidebarContent {...props} />
+    </aside>
   );
 }

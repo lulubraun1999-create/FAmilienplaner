@@ -2,14 +2,15 @@
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Plus, RefreshCw, Moon, Sun, Download } from 'lucide-react';
+import { Plus, RefreshCw, Moon, Sun, Download, Menu } from 'lucide-react';
 import type { FamilyMember, Event } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useTheme } from 'next-themes';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { getInitials } from '@/lib/utils';
 import { exportCalendar } from '@/app/actions';
-import { useState } from 'react';
+import React, { useState } from 'react';
+
 
 interface AppHeaderProps {
   groupName: string;
@@ -17,9 +18,10 @@ interface AppHeaderProps {
   onAddEvent: () => void;
   eventsToSync: Event[];
   me?: FamilyMember;
+  children?: React.ReactNode;
 }
 
-export default function AppHeader({ groupName, groupMembers, onAddEvent, eventsToSync, me }: AppHeaderProps) {
+export default function AppHeader({ groupName, groupMembers, onAddEvent, eventsToSync, me, children }: AppHeaderProps) {
   const { toast } = useToast();
   const { setTheme } = useTheme();
   const [isSyncing, setIsSyncing] = useState(false);
@@ -75,14 +77,17 @@ export default function AppHeader({ groupName, groupMembers, onAddEvent, eventsT
   return (
     <>
       <header className="flex h-20 items-center justify-between border-b bg-card px-4 sm:px-6 lg:px-8">
-        <div>
-          <h2 className="text-xl font-bold">{groupName}</h2>
-          <div className="mt-1 flex items-center">
-            {groupMembers.map((member) => (
-              <Avatar key={member.id} className="h-6 w-6 border-2 border-card">
-                <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
-              </Avatar>
-            ))}
+        <div className="flex items-center gap-4">
+          {children}
+          <div>
+            <h2 className="text-xl font-bold">{groupName}</h2>
+            <div className="mt-1 flex items-center">
+              {groupMembers.map((member) => (
+                <Avatar key={member.id} className="h-6 w-6 border-2 border-card">
+                  <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
+                </Avatar>
+              ))}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">

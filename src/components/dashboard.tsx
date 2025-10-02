@@ -21,6 +21,7 @@ import DayView from './day-view';
 import TaskDialog from './task-dialog';
 import { familyData, allFamilyMembers } from '@/lib/family-data';
 import { updateProfile } from 'firebase/auth';
+import MobileSidebar from './layout/mobile-sidebar';
 
 type CalendarViewType = 'month' | 'week' | 'day';
 
@@ -436,13 +437,22 @@ export default function Dashboard() {
           me={me}
         />
         <div className="flex flex-1 flex-col">
-          <AppHeader
-            groupName={currentGroup?.name || 'Vierklang'}
-            groupMembers={filteredData.members}
-            onAddEvent={() => handleOpenEventDialog()}
-            eventsToSync={localEvents} // Pass all events for a consistent "my calendar" export
-            me={me}
-          />
+           <AppHeader
+                groupName={currentGroup?.name || 'Vierklang'}
+                groupMembers={filteredData.members}
+                onAddEvent={() => handleOpenEventDialog()}
+                eventsToSync={localEvents} // Pass all events for a consistent "my calendar" export
+                me={me}
+            >
+                <MobileSidebar
+                    calendarGroups={calendarGroups}
+                    selectedCalendarId={selectedCalendarId}
+                    onCalendarChange={setSelectedCalendarId}
+                    familyMembers={familyMembers}
+                    onUpdateProfile={handleUpdateProfile}
+                    me={me}
+                />
+            </AppHeader>
           <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
             <Tabs defaultValue="calendar" className="h-full">
               <TabsList className="grid w-full grid-cols-4 md:w-auto md:inline-grid md:grid-cols-4">
