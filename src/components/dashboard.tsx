@@ -69,7 +69,10 @@ export default function Dashboard() {
     
 
     useEffect(() => {
-    if (firestore && user && familyName && !eventsLoading && eventsData?.length === 0 && !isDataPopulated) {
+        const areAllLoadingFinished = !eventsLoading && !tasksLoading && !shoppingLoading && !dogPlanLoading && !locationsLoading;
+        const areAllCollectionsEmpty = eventsData?.length === 0 && tasksData?.length === 0 && shoppingListData?.length === 0 && dogPlanData?.length === 0 && locationsData?.length === 0;
+
+    if (firestore && user && familyName && areAllLoadingFinished && areAllCollectionsEmpty && !isDataPopulated) {
       setIsDataPopulated(true); // Prevent this from running multiple times
       
       const populateFirestore = async () => {
@@ -113,7 +116,7 @@ export default function Dashboard() {
 
       populateFirestore();
     }
-  }, [firestore, user, familyName, eventsLoading, isDataPopulated, eventsData]);
+  }, [firestore, user, familyName, eventsLoading, tasksLoading, shoppingLoading, dogPlanLoading, locationsLoading, eventsData, tasksData, shoppingListData, dogPlanData, locationsData, isDataPopulated]);
 
   const calendarGroups: CalendarGroup[] = useMemo(() => {
     return familyData.map(family => ({

@@ -38,16 +38,19 @@ export default function DogPlan({ items, members, onUpdateItem }: DogPlanProps) 
     const existingItem = items.find(item => item.day === weekday && item.timeOfDay === timeOfDay);
 
     if (existingItem) {
+      // If the item exists, update or delete it
       onUpdateItem({ ...existingItem, assignedTo: effectiveMemberId }, false);
-    } else {
+    } else if (effectiveMemberId) {
+      // If the item does not exist and a member is being assigned, create it
       const newItem: DogPlanItem = {
-        id: `d_${weekday}_${timeOfDay}_${new Date().getTime()}`, // Temporary ID
+        id: `d_${weekday}_${timeOfDay}_${new Date().getTime()}`, // Temporary ID for a new item
         day: weekday,
         timeOfDay: timeOfDay,
         assignedTo: effectiveMemberId,
       };
       onUpdateItem(newItem, true);
     }
+    // If the item doesn't exist and no one is assigned, do nothing.
   };
 
   const getItemForSlot = (weekday: Weekday, timeOfDay: TimeOfDay) => {
