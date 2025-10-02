@@ -1,27 +1,29 @@
 'use client';
 
-import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { useState, useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Checkbox } from './ui/checkbox';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import type { ShoppingListItem, FamilyMember } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Hand } from 'lucide-react';
 import { Input } from './ui/input';
+import { Separator } from './ui/separator';
 
 interface ShoppingListProps {
   items: ShoppingListItem[];
   members: FamilyMember[];
-  onAddItem: (itemName: string) => void;
-  onUpdateItem: (itemId: string, purchased: boolean) => void;
+  onAddItem: (itemName: string, assignedTo?: string) => void;
+  onUpdateItem: (itemId: string, data: Partial<ShoppingListItem>) => void;
   onDeleteItem: (itemId: string) => void;
+  currentUserId: string;
 }
 
-export default function ShoppingList({ items, members, onAddItem, onUpdateItem, onDeleteItem }: ShoppingListProps) {
+export default function ShoppingList({ items, members, onAddItem, onUpdateItem, onDeleteItem, currentUserId }: ShoppingListProps) {
   const [newItemName, setNewItemName] = useState('');
   const [isAdding, setIsAdding] = useState(false);
-
+  
   const handleAddNewItem = () => {
     if (newItemName.trim()) {
       onAddItem(newItemName.trim());
@@ -32,10 +34,90 @@ export default function ShoppingList({ items, members, onAddItem, onUpdateItem, 
 
   const getMember = (memberId: string) => members.find(m => m.id === memberId);
 
+  const { familyItems, myItems } = useMemo(() => {
+    const familyItems = items.filter(item => !item.assignedTo && !item.purchased);
+    const myItems = items.filter(item => item.assignedTo === currentUserId && !item.purchased);
+    return { familyItems, myItems };
+  }, [items, currentUserId]);
+  
+  const purchasedItems = useMemo(() => {
+      return items.filter(item => item.purchased).sort((a,b) => (getMember(a.assignedTo || '')?.name || '').localeCompare(getMember(b.assignedTo || '')?.name || ''));
+  }, [items]);
+
+  const handleTakeItem = (itemId: string) => {
+    onUpdateItem(itemId, { assignedTo: currentUserId });
+  };
+  
+  const handleUntakeItem = (itemId: string) => {
+    onUpdateItem(itemId, { assignedTo: '' });
+  };
+  
+  const handleTogglePurchased = (itemId: string, purchased: boolean) => {
+      onUpdateItem(itemId, { purchased });
+  }
+
+  const ShoppingListItemRow = ({ item, showAssignee = false }: { item: ShoppingListItem; showAssignee?: boolean }) => {
+    const member = getMember(item.addedBy);
+    const assignedMember = item.assignedTo ? getMember(item.assignedTo) : null;
+    return (
+       <li key={item.id} className="flex items-center gap-4 rounded-md p-2 transition-colors hover:bg-secondary/50">
+            <Checkbox
+              id={`item-${item.id}`}
+              checked={item.purchased}
+              onCheckedChange={(checked) => handleTogglePurchased(item.id, Boolean(checked))}
+              aria-label={`Mark item ${item.name} as ${item.purchased ? 'not purchased' : 'purchased'}`}
+            />
+            <div className="flex-1">
+              <label htmlFor={`item-${item.id}`} className={cn("font-medium", item.purchased && "text-muted-foreground line-through")}>
+                {item.name}
+              </label>
+              <div className='flex items-center gap-2 text-xs text-muted-foreground'>
+                <span>Hinzugefügt von:</span>
+                {member && (
+                    <Avatar className="h-4 w-4">
+                        <AvatarImage src={member.avatar.imageUrl} alt={member.name} data-ai-hint={member.avatar.imageHint} />
+                        <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                )}
+              </div>
+            </div>
+            <div className='flex items-center gap-2'>
+               {showAssignee && assignedMember && (
+                 <div className='flex items-center gap-2 text-sm text-muted-foreground'>
+                    <span className='hidden sm:inline'>Gekauft von</span>
+                     <Avatar className="h-6 w-6">
+                        <AvatarImage src={assignedMember.avatar.imageUrl} alt={assignedMember.name} data-ai-hint={assignedMember.avatar.imageHint} />
+                        <AvatarFallback>{assignedMember.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                 </div>
+               )}
+                
+                {!item.purchased && !item.assignedTo && (
+                    <Button variant="outline" size="sm" onClick={() => handleTakeItem(item.id)}>
+                        <Hand className="mr-2 h-4 w-4"/> Übernehmen
+                    </Button>
+                )}
+                {!item.purchased && item.assignedTo === currentUserId && (
+                    <Button variant="outline" size="sm" onClick={() => handleUntakeItem(item.id)}>
+                        Zurücklegen
+                    </Button>
+                )}
+
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onDeleteItem(item.id)}>
+                    <Trash2 className="h-4 w-4" />
+                </Button>
+            </div>
+        </li>
+    )
+  }
+
   return (
     <Card className="shadow-lg">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Einkaufsliste</CardTitle>
+        <div>
+            <CardTitle>Einkaufsliste</CardTitle>
+            <CardDescription>Verwalte die Einkäufe für die ganze Familie.</CardDescription>
+        </div>
         <Button size="sm" variant="outline" onClick={() => setIsAdding(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Neuer Artikel
@@ -51,44 +133,50 @@ export default function ShoppingList({ items, members, onAddItem, onUpdateItem, 
               onKeyDown={(e) => e.key === 'Enter' && handleAddNewItem()}
               autoFocus
             />
-            <Button onClick={handleAddNewItem}>Hinzufügen</Button>
+            <Button onClick={handleAddNewItem}>Für alle hinzufügen</Button>
             <Button variant="ghost" onClick={() => setIsAdding(false)}>Abbrechen</Button>
           </div>
         )}
-        <ul className="space-y-4">
-          {items.map((item) => {
-            const member = getMember(item.addedBy);
-            return (
-              <li key={item.id} className="flex items-center gap-4 rounded-md border p-3 transition-colors hover:bg-secondary/50">
-                <Checkbox
-                  id={`item-${item.id}`}
-                  checked={item.purchased}
-                  onCheckedChange={(checked) => onUpdateItem(item.id, Boolean(checked))}
-                  aria-label={`Mark item ${item.name} as ${item.purchased ? 'not purchased' : 'purchased'}`}
-                />
-                <div className="flex-1">
-                  <label htmlFor={`item-${item.id}`} className={cn("font-medium", item.purchased && "text-muted-foreground line-through")}>
-                    {item.name}
-                  </label>
-                </div>
-                <div className='flex items-center gap-4'>
-                    {member && (
-                        <div className='flex items-center gap-2 text-sm text-muted-foreground'>
-                            <span className='hidden sm:inline'>Von</span>
-                            <Avatar className="h-6 w-6">
-                                <AvatarImage src={member.avatar.imageUrl} alt={member.name} data-ai-hint={member.avatar.imageHint} />
-                                <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                        </div>
-                    )}
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onDeleteItem(item.id)}>
-                        <Trash2 className="h-4 w-4" />
-                    </Button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+        
+        <div className='space-y-6'>
+            <div>
+                <h3 className='font-semibold mb-2'>Mein Anteil</h3>
+                {myItems.length > 0 ? (
+                    <ul className="space-y-2 rounded-md border p-2">
+                        {myItems.map(item => <ShoppingListItemRow key={item.id} item={item} />)}
+                    </ul>
+                ) : (
+                    <p className='text-sm text-muted-foreground text-center p-4 border rounded-md'>Du hast keine Artikel übernommen.</p>
+                )}
+            </div>
+            
+            <Separator />
+
+            <div>
+                <h3 className='font-semibold mb-2'>Für die Familie</h3>
+                {familyItems.length > 0 ? (
+                     <ul className="space-y-2 rounded-md border p-2">
+                        {familyItems.map(item => <ShoppingListItemRow key={item.id} item={item} />)}
+                    </ul>
+                ) : (
+                    <p className='text-sm text-muted-foreground text-center p-4 border rounded-md'>Aktuell gibt es nichts für die Familie einzukaufen.</p>
+                )}
+            </div>
+
+            {purchasedItems.length > 0 && (
+                 <>
+                    <Separator />
+                    <div>
+                        <h3 className='font-semibold mb-2'>Bereits gekaufte Artikel</h3>
+                         <ul className="space-y-2 rounded-md border p-2 bg-muted/50">
+                            {purchasedItems.map(item => <ShoppingListItemRow key={item.id} item={item} showAssignee={true} />)}
+                        </ul>
+                    </div>
+                 </>
+            )}
+        </div>
+
+
         {items.length === 0 && !isAdding && (
             <p className="text-center text-sm text-muted-foreground py-8">Die Einkaufsliste ist leer.</p>
         )}

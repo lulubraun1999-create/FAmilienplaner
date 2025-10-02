@@ -35,10 +35,6 @@
       "type": "object",
       "description": "Represents an event in the calendar.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the CalendarEvent entity."
-        },
         "title": {
           "type": "string",
           "description": "The title of the event."
@@ -74,7 +70,6 @@
         }
       },
       "required": [
-        "id",
         "title",
         "start",
         "end"
@@ -85,10 +80,6 @@
       "type": "object",
       "description": "Represents a task assigned to a user.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Task entity."
-        },
         "title": {
           "type": "string",
           "description": "The title of the task."
@@ -113,15 +104,20 @@
         "completed": {
           "type": "boolean",
           "description": "Indicates whether the task is completed."
+        },
+        "visibility": {
+          "type": "string",
+          "description": "Determines who can see the task.",
+          "enum": ["public", "private"]
         }
       },
       "required": [
-        "id",
         "title",
         "dueDate",
         "priority",
         "assignedTo",
-        "completed"
+        "completed",
+        "visibility"
       ]
     },
     "ShoppingListItem": {
@@ -129,10 +125,6 @@
       "type": "object",
       "description": "Represents an item on the shopping list.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the ShoppingListItem entity."
-        },
         "name": {
           "type": "string",
           "description": "The name of the item."
@@ -144,10 +136,13 @@
         "purchased": {
           "type": "boolean",
           "description": "Indicates whether the item has been purchased."
+        },
+        "assignedTo": {
+            "type": "string",
+            "description": "Reference to User. The user who has taken responsibility for purchasing the item."
         }
       },
       "required": [
-        "id",
         "name",
         "addedBy",
         "purchased"
@@ -158,9 +153,6 @@
       "type": "object",
       "description": "Represents an item in the dog plan.",
       "properties": {
-        "id": {
-          "type": "string"
-        },
         "day": {
           "type": "string"
         },
@@ -171,20 +163,20 @@
           "type": "string"
         }
       },
-      "required": ["id", "day", "timeOfDay", "assignedTo"]
+      "required": ["day", "timeOfDay", "assignedTo"]
     },
     "Location": {
       "title": "Location",
       "type": "object",
       "description": "Represents a physical location.",
       "properties": {
-        "id": { "type": "string" },
+        "name": { "type": "string" },
         "street": { "type": "string" },
         "housenumber": { "type": "string" },
         "postalcode": { "type": "string" },
         "city": { "type": "string" }
       },
-      "required": ["id", "street", "housenumber", "postalcode", "city"]
+      "required": ["name", "street", "housenumber", "postalcode", "city"]
     }
   },
   "auth": {

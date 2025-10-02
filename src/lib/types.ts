@@ -49,6 +49,7 @@ export type ShoppingListItem = {
   name: string;
   addedBy: FamilyMember['id'];
   purchased: boolean;
+  assignedTo?: FamilyMember['id'];
 };
 
 export type DogPlanItem = {

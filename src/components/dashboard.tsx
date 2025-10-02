@@ -165,20 +165,21 @@ export default function Dashboard() {
     }
   }
 
-  const handleAddShoppingItem = (itemName: string) => {
+  const handleAddShoppingItem = (itemName: string, assignedTo?: string) => {
     if (shoppingListRef && user) {
         addDoc(shoppingListRef, {
             name: itemName,
             addedBy: 'me', // Hardcoded for now, should be dynamic
             purchased: false,
+            assignedTo: assignedTo || '',
         });
     }
   };
 
-  const handleUpdateShoppingItem = (itemId: string, purchased: boolean) => {
+  const handleUpdateShoppingItem = (itemId: string, data: Partial<ShoppingListItem>) => {
     if (shoppingListRef) {
         const itemDocRef = doc(shoppingListRef, itemId);
-        updateDoc(itemDocRef, { purchased });
+        updateDoc(itemDocRef, data);
     }
   };
 
@@ -222,7 +223,7 @@ export default function Dashboard() {
     if (selectedCalendarId === 'my_calendar') {
         const myEvents = localEvents.filter(event => event.participants.includes(meId));
         const myTasks = localTasks.filter(task => task.assignedTo === meId);
-        const myShoppingItems = localShoppingItems.filter(item => item.addedBy === meId);
+        const myShoppingItems = localShoppingItems.filter(item => item.assignedTo === meId);
         const myDogPlanItems = localDogPlanItems.filter(item => item.assignedTo === meId);
         const meMember = familyMembers.find(m => m.id === meId);
 
@@ -239,7 +240,7 @@ export default function Dashboard() {
     
     const groupEvents = localEvents.filter(event => event.participants.some(p => memberIdsInGroup.has(p)));
     const groupTasks = localTasks.filter(task => memberIdsInGroup.has(task.assignedTo));
-    const groupShoppingItems = localShoppingItems.filter(item => memberIdsInGroup.has(item.addedBy));
+    const groupShoppingItems = localShoppingItems; // Show all items for other groups
     const groupDogPlanItems = localDogPlanItems.filter(item => item.assignedTo && memberIdsInGroup.has(item.assignedTo));
     const membersInGroup = familyMembers.filter(m => memberIdsInGroup.has(m.id));
 
@@ -348,6 +349,7 @@ export default function Dashboard() {
                     onAddItem={handleAddShoppingItem}
                     onUpdateItem={handleUpdateShoppingItem}
                     onDeleteItem={handleDeleteShoppingItem}
+                    currentUserId='me'
                 />
               </TabsContent>
               <TabsContent value="dog-plan" className="mt-4">
