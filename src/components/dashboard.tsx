@@ -333,7 +333,7 @@ export default function Dashboard() {
         />
         <div className="flex flex-1 flex-col">
           <AppHeader
-            groupName={currentGroup?.name || 'Familienplaner'}
+            groupName={currentGroup?.name || 'Vierklang'}
             groupMembers={filteredData.members}
             onAddEvent={() => handleOpenEventDialog()}
             eventsToSync={filteredData.events}

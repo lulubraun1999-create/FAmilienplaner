@@ -40,7 +40,7 @@ export async function getAISuggestions(
 }
 
 export async function exportCalendar(events: Event[], familyName: string): Promise<string> {
-    const calendar = ical({ name: `Familienkalender: ${familyName}` });
+    const calendar = ical({ name: `Vierklang Kalender: ${familyName}` });
 
     events.forEach(event => {
         calendar.createEvent({

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { CalendarDays, Users, User, LogOut } from 'lucide-react';
+import { Music, Users, User, LogOut } from 'lucide-react';
 import type { CalendarGroup, FamilyMember } from '@/lib/types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import ProfileDialog from '../profile-dialog';
@@ -34,8 +34,8 @@ export default function AppSidebar({ calendarGroups, selectedCalendarId, onCalen
     <>
       <aside className="hidden w-64 flex-col border-r bg-card p-4 md:flex">
         <div className="flex items-center gap-2">
-          <CalendarDays className="h-8 w-8 text-primary" />
-          <h1 className="font-headline text-2xl font-bold">Familienplaner</h1>
+          <Music className="h-8 w-8 text-primary" />
+          <h1 className="font-headline text-2xl font-bold">Vierklang</h1>
         </div>
 
         <nav className="mt-8 flex-1">

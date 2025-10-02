@@ -10,7 +10,7 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfi
 import { useAuth, useFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { CalendarDays, Loader2 } from 'lucide-react';
+import { Music, Loader2 } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -117,8 +117,8 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
        <div className="absolute top-8 left-8 flex items-center gap-2">
-          <CalendarDays className="h-8 w-8 text-primary" />
-          <h1 className="font-headline text-2xl font-bold">Familienplaner</h1>
+          <Music className="h-8 w-8 text-primary" />
+          <h1 className="font-headline text-2xl font-bold">Vierklang</h1>
         </div>
       <Tabs defaultValue="login" className="w-[400px]">
         <TabsList className="grid w-full grid-cols-2">
