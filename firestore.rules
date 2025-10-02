@@ -1,159 +1,174 @@
 /**
- * @fileoverview Firestore Security Rules for the Familienplaner application.
+ * @fileoverview Firestore Security Rules for Familienplaner.
  *
  * Core Philosophy:
- * This ruleset enforces a family-centric access control model. Users can only
- * access data that belongs to their family. User profiles are private and
- * only accessible to the user themselves.
+ * This ruleset enforces a family-centric security model where users can only access data
+ * related to their family.  User profiles are private and only accessible to the user themselves.
  *
  * Data Structure:
- * - /families/{familyName}/...: All family-related data (events, tasks, shopping lists, dog plans, locations)
- * - /users/{userId}: User profile data
+ * - /users/{userId}: Stores individual user profiles.  Access is restricted to the owning user.
+ * - /families/{familyName}/events/{eventId}: Stores calendar events for a given family.  All family members have access.
+ * - /families/{familyName}/tasks/{taskId}: Stores tasks for a given family. All family members have access.
+ * - /families/{familyName}/shoppingListItems/{shoppingListItemId}: Stores shopping list items for a given family.  All family members have access.
+ * - /families/{familyName}/dogPlan/{dogPlanItemId}: Stores dog plan items for a given family. All family members have access.
+ * - /families/{familyName}/locations/{locationId}: Stores reusable locations for a family. All family members have access.
  *
  * Key Security Decisions:
- * - Users can only list documents within their family context.
- * - User profiles are strictly private and only accessible to the owning user.
- * - The rules do not enforce strict schema validation, allowing for flexible
- *   data shapes during prototyping. However, relational integrity is maintained
- *   by validating key fields like IDs and ownership on create and update.
+ * - Users can only read and write their own user profile.
+ * - Listing of users is disallowed.
+ * - All data within a family (events, tasks, shopping list items, dog plan, locations) is accessible to all authenticated users who are members of that family.
+ * - Schema validation is relaxed in this prototyping phase to allow for rapid iteration.  Only authorization-critical fields are validated.
+ *
+ * Denormalization for Authorization:
+ * The 'familyName' field is denormalized onto the User document. This allows rules to quickly verify family membership without additional reads.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Grants access to user profiles.
+     * @description Checks if the user is signed in.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Checks if the authenticated user's ID matches the provided user ID.
+     * @param {string} userId - The user ID to compare against.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * @description Checks if the authenticated user is an existing owner.
+     * @param {string} userId - The user ID to compare against.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Checks if the authenticated user is a member of the family.
+     * @param {string} familyName - The family name to compare against.
+     */
+    function isFamilyMember(familyName) {
+        return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyName == familyName;
+    }
+
+    /**
+     * @description Stores user profiles.
      * @path /users/{userId}
-     * @allow (create) - If the user's ID matches the document ID.
-     * @allow (get, list, update, delete) - If the user is the owner of the profile.
-     * @deny (create) - If the user's ID does not match the document ID.
-     * @deny (get, list, update, delete) - If the user is not the owner of the profile.
-     * @principle Enforces document ownership for user profiles.
+     * @allow (create) User with ID 'user123' can create their profile.
+     *    request.auth.uid == 'user123'
+     *    request.resource.data.id == 'user123'
+     * @allow (get, update, delete) User with ID 'user123' can read, update, or delete their profile.
+     *    request.auth.uid == 'user123'
+     * @deny (create) User with ID 'user123' cannot create a profile with a mismatched ID.
+     *    request.auth.uid == 'user456'
+     *    request.resource.data.id == 'user123'
+     * @principle Enforces document ownership for writes.
      */
     match /users/{userId} {
-      function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
-      }
-
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
-
       allow get: if isOwner(userId);
-      allow list: if false; // Listing all users is not permitted.
+      allow list: if false;
       allow create: if isOwner(userId) && request.resource.data.id == userId;
       allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Grants access to calendar events for a family.
+     * @description Stores calendar events for each family.
      * @path /families/{familyName}/events/{eventId}
-     * @allow (get, list) - If the user is a member of the family.
-     * @allow (create) - If the user is authenticated.
-     * @allow (update, delete) - If the user is authenticated and the document exists.
-     * @deny (create) - If the user is not authenticated.
-     * @deny (update, delete) - If the user is not authenticated or the document does not exist.
-     * @principle Enforces family-based access control for calendar events.
+     * @allow (create) User belonging to 'Familie-Butz-Braun' can create an event.
+     *    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyName == 'Familie-Butz-Braun'
+     * @allow (get, list, update, delete) User belonging to 'Familie-Butz-Braun' can read/modify events.
+     *    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyName == 'Familie-Butz-Braun'
+     * @deny (create, get, list, update, delete) User belonging to 'Familie-Müller' cannot access 'Familie-Butz-Braun' events.
+     *    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyName == 'Familie-Müller'
+     * @principle Family members can manage calendar events.
      */
     match /families/{familyName}/events/{eventId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+      allow get: if isFamilyMember(familyName);
+      allow list: if isFamilyMember(familyName);
+      allow create: if isFamilyMember(familyName);
+      allow update: if isFamilyMember(familyName) && resource != null;
+      allow delete: if isFamilyMember(familyName) && resource != null;
     }
 
     /**
-     * @description Grants access to tasks for a family.
+     * @description Stores tasks for each family.
      * @path /families/{familyName}/tasks/{taskId}
-     * @allow (get, list) - If the user is a member of the family.
-     * @allow (create) - If the user is authenticated.
-     * @allow (update, delete) - If the user is authenticated and the document exists.
-     * @deny (create) - If the user is not authenticated.
-     * @deny (update, delete) - If the user is not authenticated or the document does not exist.
-     * @principle Enforces family-based access control for tasks.
+     * @allow (create) User belonging to 'Familie-Butz-Braun' can create a task.
+     *    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyName == 'Familie-Butz-Braun'
+     * @allow (get, list, update, delete) User belonging to 'Familie-Butz-Braun' can read/modify tasks.
+     *    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyName == 'Familie-Butz-Braun'
+     * @deny (create, get, list, update, delete) User belonging to 'Familie-Müller' cannot access 'Familie-Butz-Braun' tasks.
+     *    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyName == 'Familie-Müller'
+     * @principle Family members can manage tasks.
      */
     match /families/{familyName}/tasks/{taskId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+      allow get: if isFamilyMember(familyName);
+      allow list: if isFamilyMember(familyName);
+      allow create: if isFamilyMember(familyName);
+      allow update: if isFamilyMember(familyName) && resource != null;
+      allow delete: if isFamilyMember(familyName) && resource != null;
     }
 
     /**
-     * @description Grants access to shopping list items for a family.
+     * @description Stores shopping list items for each family.
      * @path /families/{familyName}/shoppingListItems/{shoppingListItemId}
-     * @allow (get, list) - If the user is a member of the family.
-     * @allow (create) - If the user is authenticated.
-     * @allow (update, delete) - If the user is authenticated and the document exists.
-     * @deny (create) - If the user is not authenticated.
-     * @deny (update, delete) - If the user is not authenticated or the document does not exist.
-     * @principle Enforces family-based access control for shopping list items.
+     * @allow (create) User belonging to 'Familie-Butz-Braun' can create a shopping list item.
+     *    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyName == 'Familie-Butz-Braun'
+     * @allow (get, list, update, delete) User belonging to 'Familie-Butz-Braun' can read/modify shopping list items.
+     *    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyName == 'Familie-Butz-Braun'
+     * @deny (create, get, list, update, delete) User belonging to 'Familie-Müller' cannot access 'Familie-Butz-Braun' shopping list items.
+     *    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyName == 'Familie-Müller'
+     * @principle Family members can manage shopping list items.
      */
     match /families/{familyName}/shoppingListItems/{shoppingListItemId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+      allow get: if isFamilyMember(familyName);
+      allow list: if isFamilyMember(familyName);
+      allow create: if isFamilyMember(familyName);
+      allow update: if isFamilyMember(familyName) && resource != null;
+      allow delete: if isFamilyMember(familyName) && resource != null;
     }
 
     /**
-     * @description Grants access to dog plan items for a family.
+     * @description Stores dog plan items for each family.
      * @path /families/{familyName}/dogPlan/{dogPlanItemId}
-     * @allow (get, list) - If the user is a member of the family.
-     * @allow (create) - If the user is authenticated.
-     * @allow (update, delete) - If the user is authenticated and the document exists.
-     * @deny (create) - If the user is not authenticated.
-     * @deny (update, delete) - If the user is not authenticated or the document does not exist.
-     * @principle Enforces family-based access control for dog plan items.
+     * @allow (create) User belonging to 'Familie-Butz-Braun' can create a dog plan item.
+     *    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyName == 'Familie-Butz-Braun'
+     * @allow (get, list, update, delete) User belonging to 'Familie-Butz-Braun' can read/modify dog plan items.
+     *    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyName == 'Familie-Butz-Braun'
+     * @deny (create, get, list, update, delete) User belonging to 'Familie-Müller' cannot access 'Familie-Butz-Braun' dog plan items.
+     *    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyName == 'Familie-Müller'
      */
     match /families/{familyName}/dogPlan/{dogPlanItemId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+      allow get: if isFamilyMember(familyName);
+      allow list: if isFamilyMember(familyName);
+      allow create: if isFamilyMember(familyName);
+      allow update: if isFamilyMember(familyName) && resource != null;
+      allow delete: if isFamilyMember(familyName) && resource != null;
     }
 
-    /**
-     * @description Grants access to locations for a family.
+        /**
+     * @description Stores reusable locations for a family.
      * @path /families/{familyName}/locations/{locationId}
-     * @allow (get, list) - If the user is a member of the family.
-     * @allow (create) - If the user is authenticated.
-     * @allow (update, delete) - If the user is authenticated and the document exists.
-     * @deny (create) - If the user is not authenticated.
-     * @deny (update, delete) - If the user is not authenticated or the document does not exist.
-     * @principle Enforces family-based access control for locations.
+     * @allow (create) User belonging to 'Familie-Butz-Braun' can create a location.
+     *    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyName == 'Familie-Butz-Braun'
+     * @allow (get, list, update, delete) User belonging to 'Familie-Butz-Braun' can read/modify locations.
+     *    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyName == 'Familie-Butz-Braun'
+     * @deny (create, get, list, update, delete) User belonging to 'Familie-Müller' cannot access 'Familie-Butz-Braun' locations.
+     *    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyName == 'Familie-Müller'
      */
     match /families/{familyName}/locations/{locationId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+      allow get: if isFamilyMember(familyName);
+      allow list: if isFamilyMember(familyName);
+      allow create: if isFamilyMember(familyName);
+      allow update: if isFamilyMember(familyName) && resource != null;
+      allow delete: if isFamilyMember(familyName) && resource != null;
     }
   }
 }
