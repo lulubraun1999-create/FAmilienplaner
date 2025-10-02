@@ -70,9 +70,9 @@ export default function WeekView({ events, locations, onEventClick, currentDate,
         </div>
       </div>
       <TooltipProvider>
-        <div className="grid grid-cols-1 md:grid-cols-7 gap-px border-t border-l bg-border">
+        <div className="grid grid-cols-1 md:grid-cols-7 border-t border-l bg-border">
           {daysInWeek.map((day, i) => (
-            <div key={i} className="min-h-[200px] bg-card">
+            <div key={i} className={cn("min-h-[200px] bg-card border-r", i === daysInWeek.length - 1 && "border-r-0")}>
               <div className={cn('p-2 text-center border-b', isToday(day) && 'bg-primary/10')}>
                  <button className='w-full text-center' onClick={() => onDayClick(day)}>
                     <p className="text-sm font-medium text-muted-foreground">{format(day, 'EEE', { locale: de })}</p>
