@@ -9,11 +9,16 @@ import CalendarView from './calendar-view';
 import TaskList from './task-list';
 import ShoppingList from './shopping-list';
 import DogPlan from './dog-plan';
-import { calendarGroups, initialFamilyMembers } from '@/lib/data';
+import { initialFamilyMembers, initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems, initialLocations, calendarGroups } from '@/lib/data';
 import type { CalendarGroup, Event, Task, ShoppingListItem, FamilyMember, DogPlanItem, Location } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import EventDialog from './event-dialog';
+import { Button } from './ui/button';
+import WeekView from './week-view';
+import DayView from './day-view';
+
+type CalendarViewType = 'month' | 'week' | 'day';
 
 export default function Dashboard() {
   const [selectedCalendarId, setSelectedCalendarId] = useState('all');
@@ -23,6 +28,12 @@ export default function Dashboard() {
   // State for dialogs
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | undefined>(undefined);
+  const [isDataPopulated, setIsDataPopulated] = useState(false);
+
+  // Calendar view state
+  const [calendarView, setCalendarView] = useState<CalendarViewType>('month');
+  const [currentDate, setCurrentDate] = useState(new Date());
+
 
   const eventsRef = useMemoFirebase(() => firestore ? collection(firestore, `families/${familyName}/events`) : null, [firestore, familyName]);
   const tasksRef = useMemoFirebase(() => firestore ? collection(firestore, `families/${familyName}/tasks`) : null, [firestore, familyName]);
@@ -35,6 +46,45 @@ export default function Dashboard() {
   const { data: shoppingListData, isLoading: shoppingLoading } = useCollection<ShoppingListItem>(shoppingListRef);
   const { data: dogPlanData, isLoading: dogPlanLoading } = useCollection<DogPlanItem>(dogPlanRef);
   const { data: locationsData, isLoading: locationsLoading } = useCollection<Location>(locationsRef);
+  
+    useEffect(() => {
+    if (firestore && !eventsLoading && !isDataPopulated && eventsData && eventsData.length === 0) {
+      const populateFirestore = async () => {
+        const batch = writeBatch(firestore);
+
+        initialEvents.forEach(event => {
+          const eventRef = doc(firestore, `families/${familyName}/events`, event.id);
+          batch.set(eventRef, event);
+        });
+
+        initialTasks.forEach(task => {
+          const taskRef = doc(firestore, `families/${familyName}/tasks`, task.id);
+          batch.set(taskRef, task);
+        });
+        
+        initialShoppingListItems.forEach(item => {
+            const itemRef = doc(firestore, `families/${familyName}/shoppingListItems`, item.id);
+            batch.set(itemRef, item);
+        });
+
+        initialDogPlanItems.forEach(item => {
+            const itemRef = doc(firestore, `families/${familyName}/dogPlan`, item.id);
+            batch.set(itemRef, item);
+        });
+
+        initialLocations.forEach(location => {
+            const locationRef = doc(firestore, `families/${familyName}/locations`, location.id);
+            batch.set(locationRef, location);
+        });
+
+        await batch.commit();
+        setIsDataPopulated(true);
+      };
+
+      populateFirestore().catch(console.error);
+    }
+  }, [firestore, eventsLoading, isDataPopulated, eventsData, familyName]);
+
 
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>(initialFamilyMembers);
   
@@ -59,15 +109,17 @@ export default function Dashboard() {
   };
   
   const handleSaveEvent = (eventData: Omit<Event, 'id'> | Event) => {
-    if ('id' in eventData) {
+    if ('id' in eventData && eventData.id) {
       // Update existing event
-      if (firestore && eventData.id) {
+      if (firestore) {
         const eventDocRef = doc(eventsRef, eventData.id);
-        updateDoc(eventDocRef, eventData as Event);
+        updateDoc(eventDocRef, eventData as any);
       }
     } else {
       // Add new event
       if (eventsRef) {
+        const newEventData = { ...eventData, id: doc(eventsRef).id };
+        const eventRef = doc(firestore, `families/${familyName}/events`, newEventData.id);
         addDoc(eventsRef, eventData);
       }
     }
@@ -183,7 +235,46 @@ export default function Dashboard() {
                 </TabsTrigger>
               </TabsList>
               <TabsContent value="calendar" className="mt-4 rounded-lg">
-                <CalendarView events={filteredData.events} locations={localLocations} onEventClick={handleOpenEventDialog} />
+                 <div className="mb-4 flex items-center justify-end gap-2">
+                    <Button variant={calendarView === 'month' ? 'default' : 'outline'} onClick={() => setCalendarView('month')}>Monat</Button>
+                    <Button variant={calendarView === 'week' ? 'default' : 'outline'} onClick={() => setCalendarView('week')}>Woche</Button>
+                    <Button variant={calendarView === 'day' ? 'default' : 'outline'} onClick={() => setCalendarView('day')}>Tag</Button>
+                </div>
+                 {calendarView === 'month' && (
+                    <CalendarView 
+                        events={filteredData.events} 
+                        locations={localLocations} 
+                        onEventClick={handleOpenEventDialog}
+                        currentDate={currentDate}
+                        setCurrentDate={setCurrentDate}
+                        onDayClick={(day) => {
+                            setCurrentDate(day);
+                            setCalendarView('day');
+                        }}
+                    />
+                 )}
+                 {calendarView === 'week' && (
+                    <WeekView 
+                        events={filteredData.events} 
+                        locations={localLocations} 
+                        onEventClick={handleOpenEventDialog}
+                        currentDate={currentDate}
+                        setCurrentDate={setCurrentDate}
+                         onDayClick={(day) => {
+                            setCurrentDate(day);
+                            setCalendarView('day');
+                        }}
+                    />
+                 )}
+                  {calendarView === 'day' && (
+                    <DayView 
+                        events={filteredData.events} 
+                        locations={localLocations} 
+                        onEventClick={handleOpenEventDialog}
+                        currentDate={currentDate}
+                        setCurrentDate={setCurrentDate}
+                    />
+                 )}
               </TabsContent>
               <TabsContent value="tasks" className="mt-4">
                 <TaskList tasks={filteredData.tasks} members={familyMembers} />
