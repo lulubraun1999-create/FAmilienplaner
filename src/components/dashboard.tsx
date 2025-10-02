@@ -113,13 +113,19 @@ export default function Dashboard() {
   }, [firestore, user, familyName, eventsLoading, isDataPopulated, eventsData]);
 
   const me = useMemo(() => {
-    // In a real app, the user's ID would be the Firestore Auth UID.
-    // We find the corresponding user from our static family data.
-    return familyMembers?.find(m => m.id === 'user-lukas');
-  }, [familyMembers]);
+    // We use the static ID from the login process which is now stored in the user document.
+    const staticId = userData?.id;
+    if (!staticId) return undefined;
+    return familyMembers?.find(m => m.id === staticId);
+  }, [familyMembers, userData]);
 
   const calendarGroups: CalendarGroup[] = useMemo(() => {
-    return [];
+    // Generate groups from the static family data
+    return familyData.map(family => ({
+        id: family.id,
+        name: family.name,
+        members: family.members.map(member => member.id),
+    }));
   }, []);
   
   const localEvents = useMemo(() => {
@@ -129,15 +135,12 @@ export default function Dashboard() {
 
   const localTasks = useMemo(() => {
     if (!tasksData) return [];
-    const currentUserId = user?.uid;
-    // Map Firestore user UIDs to static IDs if necessary, for now we assume they might match or be mapped
-    // For this app, we'll check against the "me" id from the static list
     const myStaticId = me?.id;
     return tasksData
       .map(t => ({...t, dueDate: (t.dueDate as any).toDate()}))
       .filter(t => t.visibility === 'public' || (t.visibility === 'private' && (t.assignedTo === myStaticId || t.addedBy === myStaticId)));
 
-  }, [tasksData, user, me]);
+  }, [tasksData, me]);
   
   const localShoppingItems = useMemo(() => shoppingListData || [], [shoppingListData]);
   const localDogPlanItems = useMemo(() => dogPlanData || [], [dogPlanData]);
@@ -355,8 +358,6 @@ export default function Dashboard() {
   
   const handleUpdateProfile = (updatedMember: FamilyMember) => {
      if (firestore && user) {
-      // This is tricky because the static data can't be updated.
-      // We can update the user's display name in Firebase Auth, though.
       const userDocRef = doc(firestore, 'users', user.uid);
       const updateData = { name: updatedMember.name };
       updateDoc(userDocRef, updateData).catch(e => {
@@ -544,7 +545,7 @@ export default function Dashboard() {
         setIsOpen={setIsTaskDialogOpen}
         onSave={handleSaveTask}
         onDelete={handleDeleteTask}
-        task={selectedEvent}
+        task={selectedTask}
         familyMembers={familyMembers || []}
       />
     </>
