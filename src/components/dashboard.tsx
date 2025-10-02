@@ -37,23 +37,27 @@ export default function Dashboard() {
   }, [selectedCalendarId]);
 
   const filteredData = useMemo(() => {
+    if (selectedCalendarId === 'all') {
+      // Show only items that are not assigned to any specific group.
+      // Currently, no data is 'all', so this will be empty, which is the desired behavior for now.
+      const memberIdsInGroup = new Set(familyMembers.map(m => m.id));
+      const membersInGroup = familyMembers.filter(m => memberIdsInGroup.has(m.id));
+
+      return {
+        events: [],
+        tasks: [],
+        shoppingItems: [],
+        dogPlanItems: [],
+        members: membersInGroup
+      };
+    }
+
     const memberIdsInGroup = new Set(currentGroup?.members);
-    
-    const filteredEvents = localEvents.filter(event =>
-      selectedCalendarId === 'all' || event.calendarId === selectedCalendarId
-    );
-    
-    const filteredTasks = localTasks.filter(task =>
-      selectedCalendarId === 'all' || task.calendarId === selectedCalendarId
-    );
-    
-    const filteredShoppingItems = localShoppingItems.filter(item =>
-      selectedCalendarId === 'all' || item.calendarId === selectedCalendarId
-    );
-    
-    const filteredDogPlanItems = localDogPlanItems.filter(item =>
-      selectedCalendarId === 'all' || item.calendarId === selectedCalendarId
-    );
+
+    const filteredEvents = localEvents.filter(event => event.calendarId === selectedCalendarId);
+    const filteredTasks = localTasks.filter(task => task.calendarId === selectedCalendarId);
+    const filteredShoppingItems = localShoppingItems.filter(item => item.calendarId === selectedCalendarId);
+    const filteredDogPlanItems = localDogPlanItems.filter(item => item.calendarId === selectedCalendarId);
 
     const membersInGroup = familyMembers.filter(m => memberIdsInGroup.has(m.id));
 
@@ -65,6 +69,7 @@ export default function Dashboard() {
       members: membersInGroup
     };
   }, [selectedCalendarId, currentGroup, localEvents, localTasks, localShoppingItems, localDogPlanItems]);
+
 
   return (
     <div className="flex h-screen w-full bg-background font-body text-foreground">
