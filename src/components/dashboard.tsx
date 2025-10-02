@@ -9,10 +9,10 @@ import CalendarView from './calendar-view';
 import TaskList from './task-list';
 import ShoppingList from './shopping-list';
 import DogPlan from './dog-plan';
-import { initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems, initialLocations } from '@/lib/data';
+import { initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems, initialLocations, initialFamilyMembers } from '@/lib/data';
 import type { CalendarGroup, Event, Task, ShoppingListItem, FamilyMember, DogPlanItem, Location } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser, useDoc } from '@/firebase';
-import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch, setDoc, getDoc, query, where } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch, setDoc, getDoc } from 'firebase/firestore';
 import { errorEmitter, FirestorePermissionError } from '@/firebase';
 import EventDialog from './event-dialog';
 import { Button } from './ui/button';
@@ -31,13 +31,8 @@ export default function Dashboard() {
   const { data: userData } = useDoc<FamilyMember>(userDocRef);
   const familyName = userData?.familyName;
   
-  const familyMembersQuery = useMemoFirebase(() => 
-      (firestore && familyName) 
-      ? query(collection(firestore, 'users'), where('familyName', '==', familyName)) 
-      : null,
-  [firestore, familyName]);
-  
-  const { data: familyMembers, isLoading: familyMembersLoading } = useCollection<FamilyMember>(familyMembersQuery);
+  // Replaced dynamic query with static data to fix permission issues.
+  const familyMembers = useMemo(() => initialFamilyMembers, []);
 
 
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
@@ -134,8 +129,9 @@ export default function Dashboard() {
   }, [firestore, user, familyName, eventsLoading, isDataPopulated, eventsData]);
 
   const me = useMemo(() => {
-    return familyMembers?.find(m => m.id === user?.uid);
-  }, [familyMembers, user]);
+    // When using static data, we find "me" by a known ID.
+    return familyMembers?.find(m => m.id === 'me');
+  }, [familyMembers]);
 
   const calendarGroups: CalendarGroup[] = useMemo(() => {
     return [];
@@ -403,11 +399,12 @@ export default function Dashboard() {
     }
     
     if (selectedCalendarId === 'my_calendar') {
-        const myEvents = localEvents.filter(event => event.participants.includes(currentUserId || ''));
-        const myTasks = localTasks.filter(task => task.assignedTo === currentUserId);
-        const myShoppingItems = localShoppingItems.filter(item => item.assignedTo === currentUserId);
-        const myDogPlanItems = localDogPlanItems.filter(item => item.assignedTo === currentUserId);
-        const meMember = members.find(m => m.id === currentUserId);
+        const myUserId = me?.id || '';
+        const myEvents = localEvents.filter(event => event.participants.includes(myUserId));
+        const myTasks = localTasks.filter(task => task.assignedTo === myUserId);
+        const myShoppingItems = localShoppingItems.filter(item => item.assignedTo === myUserId);
+        const myDogPlanItems = localDogPlanItems.filter(item => item.assignedTo === myUserId);
+        const meMember = members.find(m => m.id === myUserId);
 
         return {
             events: myEvents,
@@ -433,7 +430,7 @@ export default function Dashboard() {
       dogPlanItems: groupDogPlanItems,
       members: membersInGroup
     };
-  }, [selectedCalendarId, currentGroup, localEvents, localTasks, localShoppingItems, localDogPlanItems, familyMembers, user]);
+  }, [selectedCalendarId, currentGroup, localEvents, localTasks, localShoppingItems, localDogPlanItems, familyMembers, user, me]);
 
 
   return (
