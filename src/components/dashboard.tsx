@@ -49,14 +49,20 @@ export default function Dashboard() {
   const dogPlanRef = familyBasedRef('dogPlan');
   const locationsRef = familyBasedRef('locations');
   
-  const usersQuery = useMemoFirebase(
-    () =>
-      firestore && familyName
-        ? query(collection(firestore, 'users'), where('familyName', '==', familyName))
-        : null,
-    [firestore, familyName]
-  );
-  const { data: usersData, isLoading: usersLoading } = useCollection<FamilyMember>(usersQuery);
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
+
+  useEffect(() => {
+    async function fetchFamilyMembers() {
+      if (firestore && familyName) {
+        const usersQuery = query(collection(firestore, 'users'), where('familyName', '==', familyName));
+        const querySnapshot = await getDocs(usersQuery);
+        const members = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FamilyMember));
+        setFamilyMembers(members.map(m => ({ ...m, avatar: {} })));
+      }
+    }
+    fetchFamilyMembers();
+  }, [firestore, familyName]);
+
 
   const { data: eventsData, isLoading: eventsLoading } = useCollection<Event>(eventsRef);
   const { data: tasksData, isLoading: tasksLoading } = useCollection<Task>(tasksRef);
@@ -109,11 +115,6 @@ export default function Dashboard() {
       populateFirestore().catch(console.error);
     }
   }, [firestore, user, eventsLoading, isDataPopulated, eventsData, familyName, eventsRef]);
-
-  const familyMembers = useMemo(() => {
-    if (!usersData) return [];
-    return usersData.map(u => ({ ...u, avatar: {} })); // add empty avatar object
-  }, [usersData]);
 
   const me = useMemo(() => familyMembers.find(m => m.id === user?.uid), [familyMembers, user]);
   
@@ -442,3 +443,4 @@ export default function Dashboard() {
     
 
     
+
