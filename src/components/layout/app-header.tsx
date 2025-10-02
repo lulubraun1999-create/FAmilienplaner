@@ -2,11 +2,13 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Plus, Bell, RefreshCw } from 'lucide-react';
+import { Plus, Bell, RefreshCw, Moon, Sun } from 'lucide-react';
 import type { FamilyMember, Event } from '@/lib/types';
 import EventDialog from '../event-dialog';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { useTheme } from 'next-themes';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface AppHeaderProps {
   groupName: string;
@@ -17,6 +19,7 @@ interface AppHeaderProps {
 export default function AppHeader({ groupName, groupMembers, onAddEvent }: AppHeaderProps) {
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
   const { toast } = useToast();
+  const { setTheme } = useTheme();
 
   const handleSync = () => {
     toast({
@@ -48,6 +51,26 @@ export default function AppHeader({ groupName, groupMembers, onAddEvent }: AppHe
             <Bell className="h-5 w-5" />
             <span className="sr-only">Benachrichtigungen</span>
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                <span className="sr-only">Toggle theme</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setTheme("light")}>
+                Hell
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("dark")}>
+                Dunkel
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("system")}>
+                System
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button onClick={() => setIsEventDialogOpen(true)}>
             <Plus className="-ml-1 mr-2 h-5 w-5" />
             Ereignis erstellen
