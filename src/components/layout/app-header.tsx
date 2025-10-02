@@ -112,7 +112,7 @@ export default function AppHeader({ groupName, groupMembers, onAddEvent, eventsT
           </DropdownMenu>
           <Button onClick={onAddEvent}>
             <Plus className="-ml-1 mr-2 h-5 w-5" />
-            Ereignis erstellen
+            Termin erstellen
           </Button>
         </div>
       </header>
