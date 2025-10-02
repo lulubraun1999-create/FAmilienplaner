@@ -9,7 +9,7 @@ import CalendarView from './calendar-view';
 import TaskList from './task-list';
 import ShoppingList from './shopping-list';
 import DogPlan from './dog-plan';
-import { initialFamilyMembers, initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems, initialLocations, calendarGroups } from '@/lib/data';
+import { initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems, initialLocations, calendarGroups } from '@/lib/data';
 import type { CalendarGroup, Event, Task, ShoppingListItem, FamilyMember, DogPlanItem, Location } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser, useDoc } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch, setDoc, getDocs, query, where, getDoc } from 'firebase/firestore';
@@ -28,7 +28,7 @@ export default function Dashboard() {
   
   const userDocRef = useMemoFirebase(() => (firestore && user?.uid ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userData } = useDoc<FamilyMember>(userDocRef);
-  const familyName = userData?.familyName || 'Familie-Butz-Braun';
+  const familyName = userData?.familyName;
 
 
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
@@ -41,12 +41,13 @@ export default function Dashboard() {
   const [calendarView, setCalendarView] = useState<CalendarViewType>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
 
+  const familyBasedRef = (collectionName: string) => useMemoFirebase(() => (firestore && familyName ? collection(firestore, `families/${familyName}/${collectionName}`) : null), [firestore, familyName]);
 
-  const eventsRef = useMemoFirebase(() => firestore ? collection(firestore, `families/${familyName}/events`) : null, [firestore, familyName]);
-  const tasksRef = useMemoFirebase(() => firestore ? collection(firestore, `families/${familyName}/tasks`) : null, [firestore, familyName]);
-  const shoppingListRef = useMemoFirebase(() => firestore ? collection(firestore, `families/${familyName}/shoppingListItems`) : null, [firestore, familyName]);
-  const dogPlanRef = useMemoFirebase(() => firestore ? collection(firestore, `families/${familyName}/dogPlan`) : null, [firestore, familyName]);
-  const locationsRef = useMemoFirebase(() => firestore ? collection(firestore, `families/${familyName}/locations`) : null, [firestore, familyName]);
+  const eventsRef = familyBasedRef('events');
+  const tasksRef = familyBasedRef('tasks');
+  const shoppingListRef = familyBasedRef('shoppingListItems');
+  const dogPlanRef = familyBasedRef('dogPlan');
+  const locationsRef = familyBasedRef('locations');
   
   const usersQuery = useMemoFirebase(() => 
     (firestore && familyName) ? query(collection(firestore, 'users'), where('familyName', '==', familyName)) : null,
@@ -61,7 +62,7 @@ export default function Dashboard() {
   const { data: locationsData, isLoading: locationsLoading } = useCollection<Location>(locationsRef);
     
     useEffect(() => {
-    if (firestore && user && !eventsLoading && !isDataPopulated && eventsData && eventsData.length === 0 && familyName !== 'Familie-Butz-Braun') {
+    if (firestore && user && familyName && !eventsLoading && !isDataPopulated && eventsData && eventsData.length === 0) {
       const populateFirestore = async () => {
         // Check if data has already been populated by another user to avoid race conditions
         const querySnapshot = await getDocs(eventsRef!);
@@ -138,7 +139,7 @@ export default function Dashboard() {
   
   const handleSaveEvent = (eventData: Omit<Event, 'id'> | Event) => {
     if ('id' in eventData && eventData.id) {
-      if (firestore) {
+      if (firestore && eventsRef) {
         const eventDocRef = doc(eventsRef, eventData.id);
         updateDoc(eventDocRef, eventData as any);
       }
@@ -162,9 +163,9 @@ export default function Dashboard() {
   };
 
   const handleSaveTask = (taskData: Omit<Task, 'id' | 'addedBy'> | Task) => {
-     const dataWithAddedBy = { ...taskData, addedBy: (task as Task)?.addedBy || user?.uid || 'unknown' };
+     const dataWithAddedBy = { ...taskData, addedBy: ('addedBy' in taskData && taskData.addedBy) || user?.uid || 'unknown' };
      if ('id' in dataWithAddedBy && dataWithAddedBy.id) {
-      if (firestore) {
+      if (firestore && tasksRef) {
         const taskDocRef = doc(tasksRef, dataWithAddedBy.id);
         updateDoc(taskDocRef, dataWithAddedBy as any);
       }
@@ -228,7 +229,11 @@ export default function Dashboard() {
         } else if (item.id) {
             // This is an existing item with a real Firestore ID.
             const itemDocRef = doc(dogPlanRef, item.id);
-            updateDoc(itemDocRef, { assignedTo: item.assignedTo });
+            if (item.assignedTo) {
+                updateDoc(itemDocRef, { assignedTo: item.assignedTo });
+            } else {
+                deleteDoc(itemDocRef);
+            }
         }
     }
 };
@@ -401,7 +406,7 @@ export default function Dashboard() {
                 />
               </TabsContent>
               <TabsContent value="dog-plan" className="mt-4">
-                <DogPlan items={filteredData.dogPlanItems} members={familyMembers} onUpdateItem={handleUpdateDogPlanItem} />
+                <DogPlan items={localDogPlanItems} members={familyMembers} onUpdateItem={handleUpdateDogPlanItem} />
               </TabsContent>
             </Tabs>
           </main>
