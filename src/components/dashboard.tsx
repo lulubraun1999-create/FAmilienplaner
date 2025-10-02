@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import AppSidebar from './layout/app-sidebar';
 import AppHeader from './layout/app-header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -12,14 +12,13 @@ import DogPlan from './dog-plan';
 import { calendarGroups, initialFamilyMembers, initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems } from '@/lib/data';
 import type { CalendarGroup, Event, Task, ShoppingListItem, FamilyMember, DogPlanItem } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc } from 'firebase/firestore';
+import { collection, query, where, doc, writeBatch, getDocs } from 'firebase/firestore';
 
 export default function Dashboard() {
   const [selectedCalendarId, setSelectedCalendarId] = useState('all');
 
   const { firestore, user } = useFirebase();
 
-  // This is a placeholder for the actual family name which would come from the user's profile
   const familyName = 'Familie-Butz-Braun'; 
 
   const eventsRef = useMemoFirebase(() => firestore ? collection(firestore, `families/${familyName}/events`) : null, [firestore, familyName]);
@@ -34,10 +33,52 @@ export default function Dashboard() {
 
 
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>(initialFamilyMembers);
-  const [localEvents, setLocalEvents] = useState<Event[]>(eventsData || initialEvents);
-  const [localTasks, setLocalTasks] = useState<Task[]>(tasksData || initialTasks);
-  const [localShoppingItems, setLocalShoppingItems] = useState<ShoppingListItem[]>(shoppingListData || initialShoppingListItems);
-  const [localDogPlanItems, setLocalDogPlanItems] = useState<DogPlanItem[]>(dogPlanData || initialDogPlanItems);
+  const [localEvents, setLocalEvents] = useState<Event[]>([]);
+  const [localTasks, setLocalTasks] = useState<Task[]>([]);
+  const [localShoppingItems, setLocalShoppingItems] = useState<ShoppingListItem[]>([]);
+  const [localDogPlanItems, setLocalDogPlanItems] = useState<DogPlanItem[]>([]);
+
+  useEffect(() => {
+    if (firestore && familyName) {
+      const collections = {
+        events: { ref: eventsRef, data: initialEvents },
+        tasks: { ref: tasksRef, data: initialTasks },
+        shoppingListItems: { ref: shoppingListRef, data: initialShoppingListItems },
+        dogPlan: { ref: dogPlanRef, data: initialDogPlanItems },
+      };
+  
+      const populateFirestore = async () => {
+        const batch = writeBatch(firestore);
+        let hasWrites = false;
+  
+        for (const [key, { ref, data }] of Object.entries(collections)) {
+          if (ref) {
+            const snapshot = await getDocs(ref);
+            if (snapshot.empty) {
+              console.log(`Populating ${key} collection...`);
+              data.forEach((item: any) => {
+                const docRef = doc(ref, item.id);
+                batch.set(docRef, item);
+              });
+              hasWrites = true;
+            }
+          }
+        }
+  
+        if (hasWrites) {
+          try {
+            await batch.commit();
+            console.log('Successfully populated initial data.');
+          } catch (error) {
+            console.error('Error populating initial data:', error);
+          }
+        }
+      };
+  
+      populateFirestore();
+    }
+  }, [firestore, familyName, eventsRef, tasksRef, shoppingListRef, dogPlanRef]);
+
 
   React.useEffect(() => {
     if (eventsData) setLocalEvents(eventsData.map(e => ({...e, start: (e.start as any).toDate(), end: (e.end as any).toDate() })));
@@ -76,11 +117,10 @@ export default function Dashboard() {
   }, [selectedCalendarId, familyMembers]);
 
   const filteredData = useMemo(() => {
-     // For now, filtering logic remains the same, but it will be adapted for Firestore queries
-    const events = eventsData?.map(e => ({ ...e, start: (e.start as any).toDate(), end: (e.end as any).toDate() })) || [];
-    const tasks = tasksData?.map(t => ({ ...t, dueDate: (t.dueDate as any).toDate() })) || [];
-    const shoppingItems = shoppingListData || [];
-    const dogPlanItems = dogPlanData || [];
+    const events = localEvents;
+    const tasks = localTasks;
+    const shoppingItems = localShoppingItems;
+    const dogPlanItems = localDogPlanItems;
 
     if (selectedCalendarId === 'all') {
         return { events, tasks, shoppingItems, dogPlanItems, members: familyMembers };
@@ -119,7 +159,7 @@ export default function Dashboard() {
       dogPlanItems: groupDogPlanItems,
       members: membersInGroup
     };
-  }, [selectedCalendarId, currentGroup, eventsData, tasksData, shoppingListData, dogPlanData, familyMembers]);
+  }, [selectedCalendarId, currentGroup, localEvents, localTasks, localShoppingItems, localDogPlanItems, familyMembers]);
 
 
   return (

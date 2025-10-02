@@ -10,7 +10,7 @@ export type FamilyMember = {
 export type CalendarGroup = {
   id: string;
   name: string;
-  members: FamilyMember['id'][];
+  members: readonly FamilyMember['id'][];
 };
 
 export type Location = {
@@ -24,12 +24,12 @@ export type Location = {
 export type Event = {
   id: string;
   title: string;
-  start: Timestamp | Date; // Allow both for local and Firestore data
+  start: Timestamp | Date;
   end: Timestamp | Date;
   allDay?: boolean;
   location?: string;
   description?: string;
-  participants: FamilyMember['id'][];
+  participants: readonly FamilyMember['id'][];
 };
 
 export type Task = {
@@ -53,4 +53,5 @@ export type DogPlanItem = {
   day: 'Montag' | 'Dienstag' | 'Mittwoch' | 'Donnerstag' | 'Freitag' | 'Samstag' | 'Sonntag';
   timeOfDay: 'Morgen' | 'Mittag' | 'Abend';
   assignedTo: FamilyMember['id'];
+  calendarId?: string;
 };
