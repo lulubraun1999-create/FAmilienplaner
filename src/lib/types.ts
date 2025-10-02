@@ -8,6 +8,7 @@ export type FamilyMember = {
     imageHint?: string;
     imageUrl?: string;
   };
+  color: string;
   familyName?: string;
 };
 

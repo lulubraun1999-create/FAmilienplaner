@@ -16,7 +16,7 @@ import {
 import { de } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
 import { Button } from './ui/button';
-import type { Event, Location } from '@/lib/types';
+import type { Event, Location, FamilyMember } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Badge } from './ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
@@ -24,13 +24,14 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/t
 interface WeekViewProps {
   events: Event[];
   locations: Location[];
+  familyMembers: FamilyMember[];
   onEventClick: (event: Event) => void;
   currentDate: Date;
   setCurrentDate: (date: Date) => void;
   onDayClick: (date: Date) => void;
 }
 
-export default function WeekView({ events, locations, onEventClick, currentDate, setCurrentDate, onDayClick }: WeekViewProps) {
+export default function WeekView({ events, locations, familyMembers, onEventClick, currentDate, setCurrentDate, onDayClick }: WeekViewProps) {
   const firstDayOfWeek = startOfWeek(currentDate, { locale: de });
   const lastDayOfWeek = endOfWeek(currentDate, { locale: de });
   
@@ -61,6 +62,10 @@ export default function WeekView({ events, locations, onEventClick, currentDate,
   const getLocationById = (locationId: string) => {
     return locations.find(location => location.id === locationId);
   }
+
+  const getMemberColor = (userId: string) => {
+    return familyMembers.find(m => m.id === userId)?.color;
+  };
 
   return (
     <div className="rounded-lg border bg-card p-4 shadow-sm">
@@ -95,12 +100,11 @@ export default function WeekView({ events, locations, onEventClick, currentDate,
                     const isFirstDay = isSameDay(eventStart, day);
                     const isLastDay = isSameDay(eventEnd, day);
 
-                    const badgeStyle = cn(
-                        'w-full truncate text-xs flex items-center justify-start gap-2 cursor-pointer',
+                     const badgeStyle = cn(
+                        'w-full truncate text-xs flex items-center justify-start gap-2 cursor-pointer border-l-4',
                         {
                             'rounded-r-none': !isLastDay,
                             'rounded-l-none': !isFirstDay,
-                            'rounded-full': isFirstDay && isLastDay,
                         }
                     );
                     
@@ -108,7 +112,7 @@ export default function WeekView({ events, locations, onEventClick, currentDate,
                         <Tooltip key={event.id}>
                         <TooltipTrigger asChild>
                             <button className='w-full text-left' onClick={() => onEventClick(event)}>
-                                <Badge className={badgeStyle} variant='secondary'>
+                                <Badge className={badgeStyle} variant='secondary' style={{ borderColor: getMemberColor(event.createdBy) }}>
                                 {isFirstDay && !event.allDay && <span>{format(eventStart, 'HH:mm')}</span>}
                                 <span className='truncate'>{event.title}</span>
                                 {location && <MapPin className="h-3 w-3 flex-shrink-0" />}

@@ -15,8 +15,8 @@ export const familyData = [
         name: 'Familie Butz/Braun',
         code: 'Rolf1784',
         members: [
-            { id: 'user-lukas', name: 'Lukas Braun', email: 'lulubraun1999@gmail.com', avatar: {} },
-            { id: 'user-lena', name: 'Lena Butz', email: 'lena.butz@example.com', avatar: {} }
+            { id: 'user-lukas', name: 'Lukas Braun', email: 'lulubraun1999@gmail.com', avatar: {}, color: 'hsl(var(--chart-1))' },
+            { id: 'user-lena', name: 'Lena Butz', email: 'lena.butz@example.com', avatar: {}, color: 'hsl(var(--chart-2))' }
         ]
     },
     {

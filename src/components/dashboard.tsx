@@ -482,7 +482,8 @@ export default function Dashboard() {
                  {calendarView === 'month' && (
                     <CalendarView 
                         events={filteredData.events} 
-                        locations={localLocations} 
+                        locations={localLocations}
+                        familyMembers={familyMembers}
                         onEventClick={handleOpenEventDialog}
                         currentDate={currentDate}
                         setCurrentDate={setCurrentDate}
@@ -496,6 +497,7 @@ export default function Dashboard() {
                     <WeekView 
                         events={filteredData.events} 
                         locations={localLocations} 
+                        familyMembers={familyMembers}
                         onEventClick={handleOpenEventDialog}
                         currentDate={currentDate}
                         setCurrentDate={setCurrentDate}
@@ -509,6 +511,7 @@ export default function Dashboard() {
                     <DayView 
                         events={filteredData.events} 
                         locations={localLocations} 
+                        familyMembers={familyMembers}
                         onEventClick={handleOpenEventDialog}
                         currentDate={currentDate}
                         setCurrentDate={setCurrentDate}

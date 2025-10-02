@@ -90,9 +90,7 @@ export default function DogPlan({ items, members, onUpdateItem }: DogPlanProps) 
                                 <SelectValue placeholder="Nicht zugewiesen">
                                     {member ? (
                                         <div className='flex items-center gap-2'>
-                                            <Avatar className="h-6 w-6">
-                                                <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
-                                            </Avatar>
+                                            <span className='h-3 w-3 rounded-full' style={{ backgroundColor: member.color }}></span>
                                             <span>{member.name}</span>
                                         </div>
                                     ) : 'Nicht zugewiesen'}
@@ -103,9 +101,7 @@ export default function DogPlan({ items, members, onUpdateItem }: DogPlanProps) 
                                 {members.map(m => (
                                     <SelectItem key={m.id} value={m.id}>
                                         <div className='flex items-center gap-2'>
-                                             <Avatar className="h-6 w-6">
-                                                <AvatarFallback>{getInitials(m.name)}</AvatarFallback>
-                                            </Avatar>
+                                             <span className='h-3 w-3 rounded-full' style={{ backgroundColor: m.color }}></span>
                                             <span>{m.name}</span>
                                         </div>
                                     </SelectItem>

@@ -20,7 +20,7 @@ import {
 import { de } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
 import { Button } from './ui/button';
-import type { Event, Location } from '@/lib/types';
+import type { Event, Location, FamilyMember } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Badge } from './ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
@@ -29,13 +29,14 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/t
 interface CalendarViewProps {
   events: Event[];
   locations: Location[];
+  familyMembers: FamilyMember[];
   onEventClick: (event: Event) => void;
   currentDate: Date;
   setCurrentDate: (date: Date) => void;
   onDayClick: (date: Date) => void;
 }
 
-export default function CalendarView({ events, locations, onEventClick, currentDate, setCurrentDate, onDayClick }: CalendarViewProps) {
+export default function CalendarView({ events, locations, familyMembers, onEventClick, currentDate, setCurrentDate, onDayClick }: CalendarViewProps) {
   const firstDayOfMonth = startOfMonth(currentDate);
 
   const daysInMonth = eachDayOfInterval({
@@ -65,6 +66,10 @@ export default function CalendarView({ events, locations, onEventClick, currentD
   const getLocationById = (locationId: string) => {
     return locations.find(location => location.id === locationId);
   }
+
+  const getMemberColor = (userId: string) => {
+    return familyMembers.find(m => m.id === userId)?.color;
+  };
 
   return (
     <div className="rounded-lg border bg-card p-4 shadow-sm">
@@ -120,11 +125,10 @@ export default function CalendarView({ events, locations, onEventClick, currentD
                                 const isLastDay = isSameDay(eventEnd, day);
 
                                 const badgeStyle = cn(
-                                    'w-full truncate text-xs flex items-center justify-start gap-2 cursor-pointer',
+                                    'w-full truncate text-xs flex items-center justify-start gap-2 cursor-pointer border-l-4',
                                     {
                                         'rounded-r-none': !isLastDay,
                                         'rounded-l-none': !isFirstDay,
-                                        'rounded-full': isFirstDay && isLastDay,
                                     }
                                 );
                                 
@@ -132,7 +136,7 @@ export default function CalendarView({ events, locations, onEventClick, currentD
                                     <Tooltip key={event.id}>
                                     <TooltipTrigger asChild>
                                         <button className='w-full text-left' onClick={() => onEventClick(event)}>
-                                            <Badge className={badgeStyle} variant='secondary'>
+                                            <Badge className={badgeStyle} variant='secondary' style={{ borderColor: getMemberColor(event.createdBy) }}>
                                             {isFirstDay && !event.allDay && <span>{format(eventStart, 'HH:mm')}</span>}
                                             <span className='truncate'>{event.title}</span>
                                             {location && <MapPin className="h-3 w-3 flex-shrink-0" />}

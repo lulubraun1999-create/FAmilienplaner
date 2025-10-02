@@ -49,6 +49,7 @@ export default function TaskList({ tasks, members, onTaskClick, onNewTaskClick, 
         <ul className="space-y-4">
           {tasks.map((task) => {
             const member = getMember(task.assignedTo);
+            const memberColor = member?.color || 'hsl(var(--primary))';
             return (
               <li key={task.id} className="flex items-center gap-4 rounded-md border p-3 transition-colors hover:bg-secondary/50 group">
                 <Checkbox
@@ -56,6 +57,8 @@ export default function TaskList({ tasks, members, onTaskClick, onNewTaskClick, 
                   checked={task.completed}
                   onCheckedChange={() => handleToggle(task)}
                   aria-label={`Mark task ${task.title} as ${task.completed ? 'incomplete' : 'complete'}`}
+                  style={{ color: memberColor }}
+                  className='data-[state=checked]:bg-transparent data-[state=checked]:border-current'
                 />
                 <button className='flex-1 text-left' onClick={() => onTaskClick(task)}>
                     <div className="flex-1">
@@ -75,7 +78,7 @@ export default function TaskList({ tasks, members, onTaskClick, onNewTaskClick, 
                     {member && (
                         <div className="cursor-pointer" onClick={() => onTaskClick(task)}>
                           <Avatar className="h-8 w-8">
-                              <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
+                              <AvatarFallback style={{ backgroundColor: member.color, color: 'white' }}>{getInitials(member.name)}</AvatarFallback>
                           </Avatar>
                         </div>
                     )}
