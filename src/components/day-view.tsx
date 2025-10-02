@@ -5,7 +5,9 @@ import {
   format,
   add,
   isToday,
-  isSameDay,
+  isWithinInterval,
+  startOfDay,
+  endOfDay,
 } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, MapPin, Clock } from 'lucide-react';
@@ -35,7 +37,12 @@ export default function DayView({ events, locations, familyMembers, onEventClick
   };
 
   const dayEvents = events
-    .filter(event => isSameDay(new Date(event.start.toString()), currentDate))
+    .filter(event => 
+        isWithinInterval(currentDate, { 
+            start: startOfDay(new Date(event.start.toString())), 
+            end: endOfDay(new Date(event.end.toString())) 
+        })
+    )
     .sort((a,b) => new Date(a.start).getTime() - new Date(b.start).getTime());
 
   const getLocationById = (locationId: string) => {
