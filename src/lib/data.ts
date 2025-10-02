@@ -3,20 +3,15 @@ import { Timestamp } from 'firebase/firestore';
 
 // This data is now only used for initial population and as a fallback.
 export const initialFamilyMembers: FamilyMember[] = [
-    { id: 'dad', name: 'Matthias Butz', email: 'dad@example.com', avatar: {} },
-    { id: 'mom', name: 'Rebecca Butz', email: 'mom@example.com', avatar: {} },
-    { id: 'sister', name: 'Louisa Butz', email: 'sister@example.com', avatar: {} },
     { id: 'me', name: 'Lukas Braun', email: 'lulubraun1999@gmail.com', avatar: {} },
-    { id: 'grandma', name: 'Oma Fröhle', email: 'grandma@example.com', avatar: {} },
-    { id: 'grandpa', name: 'Opa Fröhle', email: 'grandpa@example.com', avatar: {} },
-    { id: 'aunt', name: 'Tante Fröhle', email: 'aunt@example.com', avatar: {} },
-    { id: 'uncle', name: 'Onkel Weiß', email: 'uncle@example.com', avatar: {} },
+    // Other example users have been removed as they are not registered.
+    // New users should be added via the registration form.
 ];
 
 export const calendarGroups: CalendarGroup[] = [
-  { id: 'c_butz_braun', name: 'Familie Butz/Braun', members: ['dad', 'mom', 'sister', 'me'] },
-  { id: 'c_froehle', name: 'Familie Fröhle', members: ['grandma', 'grandpa'] },
-  { id: 'c_froehle_weiss', name: 'Familie Fröhle/Weiß', members: ['aunt', 'uncle'] },
+  { id: 'c_butz_braun', name: 'Familie Butz/Braun', members: ['me'] },
+  { id: 'c_froehle', name: 'Familie Fröhle', members: [] },
+  { id: 'c_froehle_weiss', name: 'Familie Fröhle/Weiß', members: [] },
 ];
 
 const today = new Date();
@@ -39,7 +34,7 @@ export const initialEvents: Event[] = [
     title: 'Fußballtraining',
     start: new Date(new Date(today).setHours(17, 0, 0, 0)),
     end: new Date(new Date(today).setHours(18, 30, 0, 0)),
-    participants: ['sister'],
+    participants: ['me'], // Adjusted to a valid user
     locationId: 'loc1',
   },
   {
@@ -53,18 +48,18 @@ export const initialEvents: Event[] = [
 ];
 
 export const initialTasks: Task[] = [
-    { id: 't1', title: 'Müll rausbringen', assignedTo: 'sister', dueDate: today, priority: 'medium', completed: false, visibility: 'public', addedBy: 'mom' },
-    { id: 't2', title: 'Geschenk für Oma kaufen', assignedTo: 'me', dueDate: tomorrow, priority: 'high', completed: false, visibility: 'public', addedBy: 'mom' },
+    { id: 't1', title: 'Müll rausbringen', assignedTo: 'me', dueDate: today, priority: 'medium', completed: false, visibility: 'public', addedBy: 'me' },
+    { id: 't2', title: 'Geschenk für Oma kaufen', assignedTo: 'me', dueDate: tomorrow, priority: 'high', completed: false, visibility: 'public', addedBy: 'me' },
 ];
 
 export const initialShoppingListItems: ShoppingListItem[] = [
-    { id: 's1', name: 'Milch', addedBy: 'mom', purchased: false, assignedTo: '' },
-    { id: 's2', name: 'Brot', addedBy: 'mom', purchased: true, assignedTo: 'mom' },
+    { id: 's1', name: 'Milch', addedBy: 'me', purchased: false, assignedTo: '' },
+    { id: 's2', name: 'Brot', addedBy: 'me', purchased: true, assignedTo: 'me' },
 ];
 
 export const initialDogPlanItems: DogPlanItem[] = [
-    { id: 'd_mo_m_init', day: 'Montag', timeOfDay: 'Morgen', assignedTo: 'dad' },
-    { id: 'd_mo_a_init', day: 'Montag', timeOfDay: 'Abend', assignedTo: 'mom' },
+    { id: 'd_mo_m_init', day: 'Montag', timeOfDay: 'Morgen', assignedTo: 'me' },
+    { id: 'd_mo_a_init', day: 'Montag', timeOfDay: 'Abend', assignedTo: 'me' },
 ];
 
 
