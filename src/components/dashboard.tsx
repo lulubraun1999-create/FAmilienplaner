@@ -249,6 +249,22 @@ export default function Dashboard() {
     }
   }
 
+  const handleUpdateTask = (taskId: string, data: Partial<Task>) => {
+    if (tasksRef) {
+      const taskDocRef = doc(tasksRef, taskId);
+      updateDoc(taskDocRef, data).catch((e) => {
+        errorEmitter.emit(
+          'permission-error',
+          new FirestorePermissionError({
+            path: taskDocRef.path,
+            operation: 'update',
+            requestResourceData: data,
+          })
+        );
+      });
+    }
+  };
+
   const handleAddShoppingItem = (itemName: string, assignedTo?: string) => {
     if (shoppingListRef && user) {
         const newItem = {
@@ -513,6 +529,7 @@ export default function Dashboard() {
                     members={familyMembers || []}
                     onTaskClick={handleOpenTaskDialog}
                     onNewTaskClick={() => handleOpenTaskDialog()}
+                    onUpdateTask={handleUpdateTask}
                 />
               </TabsContent>
               <TabsContent value="shopping" className="mt-4">
@@ -554,5 +571,3 @@ export default function Dashboard() {
     </>
   );
 }
-
-    

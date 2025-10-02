@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { useAuth, useFirebase } from '@/firebase';
+import { useAuth, useFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Music, Loader2 } from 'lucide-react';
@@ -82,17 +82,23 @@ export default function LoginPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, registerEmail, registerPassword);
       const user = userCredential.user;
 
-      // Update Firebase Auth profile
       await updateProfile(user, { displayName: registerName });
       
-      // Create user document in Firestore
       if (firestore) {
         const userDocRef = doc(firestore, 'users', user.uid);
-        await setDoc(userDocRef, {
+        const userData = {
             id: user.uid,
             name: registerName,
             email: registerEmail,
             familyName: selectedFamily.id
+        };
+        
+        setDoc(userDocRef, userData).catch(e => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: userDocRef.path,
+                operation: 'create',
+                requestResourceData: userData
+            }));
         });
       }
       
@@ -243,7 +249,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-    
-
-    

@@ -19,6 +19,7 @@ interface TaskListProps {
   members: FamilyMember[];
   onTaskClick: (task: Task) => void;
   onNewTaskClick: () => void;
+  onUpdateTask: (taskId: string, data: Partial<Task>) => void;
 }
 
 const priorityMap: Record<Task['priority'], { label: string; className: string }> = {
@@ -27,21 +28,9 @@ const priorityMap: Record<Task['priority'], { label: string; className: string }
   low: { label: 'Niedrig', className: 'bg-green-500' },
 };
 
-export default function TaskList({ tasks, members, onTaskClick, onNewTaskClick }: TaskListProps) {
-    const { firestore } = useFirebase();
-
+export default function TaskList({ tasks, members, onTaskClick, onNewTaskClick, onUpdateTask }: TaskListProps) {
     const handleToggle = (task: Task) => {
-        if(firestore) {
-            const taskRef = doc(firestore, `families/Familie-Butz-Braun/tasks/${task.id}`);
-            const updateData = { completed: !task.completed };
-            updateDoc(taskRef, updateData).catch(e => {
-                errorEmitter.emit('permission-error', new FirestorePermissionError({
-                    path: taskRef.path,
-                    operation: 'update',
-                    requestResourceData: updateData
-                }));
-            });
-        }
+        onUpdateTask(task.id, { completed: !task.completed });
     };
 
     const getMember = (memberId: string) => members.find(m => m.id === memberId);
@@ -96,5 +85,3 @@ export default function TaskList({ tasks, members, onTaskClick, onNewTaskClick }
     </Card>
   );
 }
-
-    
