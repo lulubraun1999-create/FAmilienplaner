@@ -10,7 +10,7 @@ import TaskList from './task-list';
 import ShoppingList from './shopping-list';
 import DogPlan from './dog-plan';
 import { initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems, initialLocations, calendarGroups } from '@/lib/data';
-import type { CalendarGroup, Event, Task, ShoppingListItem, FamilyMember, DogPlanItem, Location } from '@/lib/types';
+import type { CalendarGroup, Event, Task, ShoppingListItem, FamilyMember, DogPlanItem, Location, Family } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser, useDoc, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch, setDoc, getDocs, query, where, getDoc } from 'firebase/firestore';
 import EventDialog from './event-dialog';
@@ -30,7 +30,6 @@ export default function Dashboard() {
   const { data: userData } = useDoc<FamilyMember>(userDocRef);
   const familyName = userData?.familyName;
 
-
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | undefined>(undefined);
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
@@ -42,6 +41,28 @@ export default function Dashboard() {
   const [currentDate, setCurrentDate] = useState(new Date());
   
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
+
+  const familyDocRef = useMemoFirebase(() => (firestore && familyName ? doc(firestore, 'families', familyName) : null), [firestore, familyName]);
+  const { data: familyData } = useDoc<Family>(familyDocRef);
+
+  useEffect(() => {
+    const fetchFamilyMembers = async () => {
+      if (firestore && familyData?.memberIds) {
+        try {
+          const memberPromises = familyData.memberIds.map(id => getDoc(doc(firestore, 'users', id)));
+          const memberSnapshots = await Promise.all(memberPromises);
+          const members = memberSnapshots
+            .filter(snap => snap.exists())
+            .map(snap => ({ id: snap.id, ...snap.data() } as FamilyMember));
+          setFamilyMembers(members);
+        } catch (e) {
+          console.error("Error fetching family members' profiles", e);
+        }
+      }
+    };
+    fetchFamilyMembers();
+  }, [firestore, familyData]);
+
 
   const familyBasedRef = (collectionName: string) => useMemoFirebase(() => (firestore && familyName ? collection(firestore, `families/${familyName}/${collectionName}`) : null), [firestore, familyName]);
 
@@ -58,28 +79,6 @@ export default function Dashboard() {
   const { data: dogPlanData, isLoading: dogPlanLoading } = useCollection<DogPlanItem>(dogPlanRef);
   const { data: locationsData, isLoading: locationsLoading } = useCollection<Location>(locationsRef);
     
-  useEffect(() => {
-    const fetchFamilyMembers = async () => {
-      if (firestore && familyName) {
-        const usersQuery = query(collection(firestore, 'users'), where('familyName', '==', familyName));
-        try {
-          const querySnapshot = await getDocs(usersQuery);
-          const members = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FamilyMember));
-          setFamilyMembers(members);
-        } catch (serverError) {
-            const contextualError = new FirestorePermissionError({
-              operation: 'list',
-              path: 'users',
-            })
-            errorEmitter.emit('permission-error', contextualError);
-            console.error("Permission error fetching family members:", contextualError);
-        }
-      }
-    };
-
-    fetchFamilyMembers();
-  }, [firestore, familyName]);
-
 
     useEffect(() => {
     if (firestore && user && familyName && !eventsLoading && !isDataPopulated && eventsData?.length === 0) {
@@ -470,5 +469,3 @@ export default function Dashboard() {
     </>
   );
 }
-
-    

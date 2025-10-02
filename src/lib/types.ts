@@ -8,7 +8,14 @@ export type FamilyMember = {
     imageHint?: string;
     imageUrl?: string;
   };
+  familyName?: string;
 };
+
+export type Family = {
+    id: string;
+    name: string;
+    memberIds: string[];
+}
 
 export type CalendarGroup = {
   id: string;
