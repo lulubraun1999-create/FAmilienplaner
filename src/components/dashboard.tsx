@@ -144,7 +144,7 @@ export default function Dashboard() {
   };
 
   const handleSaveTask = (taskData: Omit<Task, 'id' | 'addedBy'> | Task) => {
-     const dataWithAddedBy = { ...taskData, addedBy: 'me' }; // Hardcoded for now
+     const dataWithAddedBy = { ...taskData, addedBy: task?.addedBy || 'me' };
      if ('id' in dataWithAddedBy && dataWithAddedBy.id) {
       // Update existing task
       if (firestore) {
@@ -188,6 +188,13 @@ export default function Dashboard() {
     if (shoppingListRef) {
         const itemDocRef = doc(shoppingListRef, itemId);
         deleteDoc(itemDocRef);
+    }
+  };
+
+  const handleUpdateDogPlanItem = (item: DogPlanItem) => {
+    if (dogPlanRef) {
+      const itemDocRef = doc(dogPlanRef, item.id);
+      setDoc(itemDocRef, item, { merge: true });
     }
   };
 
@@ -354,7 +361,7 @@ export default function Dashboard() {
                 />
               </TabsContent>
               <TabsContent value="dog-plan" className="mt-4">
-                <DogPlan items={filteredData.dogPlanItems} members={familyMembers} />
+                <DogPlan items={filteredData.dogPlanItems} members={familyMembers} onUpdateItem={handleUpdateDogPlanItem} />
               </TabsContent>
             </Tabs>
           </main>

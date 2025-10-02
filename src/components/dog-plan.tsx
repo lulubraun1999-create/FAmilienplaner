@@ -1,12 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import type { DogPlanItem, FamilyMember } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { Button } from './ui/button';
-import { Plus } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -18,6 +16,7 @@ import {
 interface DogPlanProps {
   items: DogPlanItem[];
   members: FamilyMember[];
+  onUpdateItem: (item: DogPlanItem) => void;
 }
 
 type Weekday = 'Montag' | 'Dienstag' | 'Mittwoch' | 'Donnerstag' | 'Freitag' | 'Samstag' | 'Sonntag';
@@ -27,37 +26,31 @@ const weekdays: Weekday[] = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Fr
 const timesOfDay: TimeOfDay[] = ['Morgen', 'Mittag', 'Abend'];
 const UNASSIGNED_VALUE = 'unassigned';
 
-export default function DogPlan({ items, members }: DogPlanProps) {
-  const [localItems, setLocalItems] = useState(items);
-
-  const getMember = (memberId: string | null) => {
+export default function DogPlan({ items, members, onUpdateItem }: DogPlanProps) {
+  const getMember = (memberId: string | undefined) => {
     if (!memberId) return null;
     return members.find(m => m.id === memberId);
   };
   
   const handleAssignmentChange = (weekday: Weekday, timeOfDay: TimeOfDay, memberId: string) => {
     const effectiveMemberId = memberId === UNASSIGNED_VALUE ? '' : memberId;
-    setLocalItems(prevItems => {
-        const newItems = [...prevItems];
-        const itemIndex = newItems.findIndex(item => item.day === weekday && item.timeOfDay === timeOfDay);
+    const existingItem = items.find(item => item.day === weekday && item.timeOfDay === timeOfDay);
 
-        if (itemIndex > -1) {
-            newItems[itemIndex] = { ...newItems[itemIndex], assignedTo: effectiveMemberId };
-        } else {
-            newItems.push({
-                id: `d_${weekday}_${timeOfDay}`,
-                day: weekday,
-                timeOfDay: timeOfDay,
-                assignedTo: effectiveMemberId,
-                calendarId: 'c_immediate' // Assuming a default
-            });
-        }
-        return newItems;
-    });
+    if (existingItem) {
+      onUpdateItem({ ...existingItem, assignedTo: effectiveMemberId });
+    } else {
+      const newItem: DogPlanItem = {
+        id: `d_${weekday}_${timeOfDay}`,
+        day: weekday,
+        timeOfDay: timeOfDay,
+        assignedTo: effectiveMemberId,
+      };
+      onUpdateItem(newItem);
+    }
   };
 
   const getItemForSlot = (weekday: Weekday, timeOfDay: TimeOfDay) => {
-    return localItems.find(item => item.day === weekday && item.timeOfDay === timeOfDay);
+    return items.find(item => item.day === weekday && item.timeOfDay === timeOfDay);
   };
 
   return (
@@ -82,7 +75,7 @@ export default function DogPlan({ items, members }: DogPlanProps) {
                   <td className="p-2 font-medium border-r">{time}</td>
                   {weekdays.map(day => {
                     const item = getItemForSlot(day, time);
-                    const member = getMember(item?.assignedTo || null);
+                    const member = getMember(item?.assignedTo);
                     return (
                       <td key={`${day}-${time}`} className="p-2 min-w-[150px]">
                         <Select
