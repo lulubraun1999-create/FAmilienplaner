@@ -16,7 +16,7 @@ import { doc, setDoc } from 'firebase/firestore';
 
 // IMPORTANT: This should be stored securely, e.g., in Firebase Remote Config or a secure backend.
 // For this prototype, we'll hardcode it, but this is NOT for production.
-const FAMILY_REGISTRATION_CODE = 'BUTZ-BRAUN-2024';
+const FAMILY_REGISTRATION_CODE = 'Rolf1784';
 
 export default function LoginPage() {
   const [loginEmail, setLoginEmail] = useState('');
