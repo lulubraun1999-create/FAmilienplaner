@@ -9,7 +9,7 @@ import CalendarView from './calendar-view';
 import TaskList from './task-list';
 import ShoppingList from './shopping-list';
 import DogPlan from './dog-plan';
-import { initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems, initialLocations, calendarGroups } from '@/lib/data';
+import { initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems, initialLocations, calendarGroups, initialFamilyMembers } from '@/lib/data';
 import type { CalendarGroup, Event, Task, ShoppingListItem, FamilyMember, DogPlanItem, Location } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser, useDoc, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch, setDoc, getDocs, query, where, getDoc } from 'firebase/firestore';
@@ -49,27 +49,7 @@ export default function Dashboard() {
   const dogPlanRef = familyBasedRef('dogPlan');
   const locationsRef = familyBasedRef('locations');
   
-  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
-
-  useEffect(() => {
-    async function fetchFamilyMembers() {
-      if (firestore && familyName) {
-        const usersQuery = query(collection(firestore, 'users'), where('familyName', '==', familyName));
-        try {
-            const querySnapshot = await getDocs(usersQuery);
-            const members = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FamilyMember));
-            setFamilyMembers(members.map(m => ({ ...m, avatar: {} })));
-        } catch(e) {
-            const permissionError = new FirestorePermissionError({
-                path: 'users',
-                operation: 'list',
-            });
-            errorEmitter.emit('permission-error', permissionError);
-        }
-      }
-    }
-    fetchFamilyMembers();
-  }, [firestore, familyName]);
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>(initialFamilyMembers);
 
 
   const { data: eventsData, isLoading: eventsLoading } = useCollection<Event>(eventsRef);
@@ -124,7 +104,10 @@ export default function Dashboard() {
     }
   }, [firestore, user, eventsLoading, isDataPopulated, eventsData, familyName, eventsRef]);
 
-  const me = useMemo(() => familyMembers.find(m => m.id === user?.uid), [familyMembers, user]);
+  const me = useMemo(() => {
+    // Try to find user by UID first, then by email as a fallback for initial load
+    return familyMembers.find(m => m.id === user?.uid) || familyMembers.find(m => m.email === user?.email);
+  }, [familyMembers, user]);
   
   const localEvents = useMemo(() => {
     if (!eventsData) return [];
@@ -335,8 +318,6 @@ export default function Dashboard() {
             groupName={currentGroup?.name || 'Familienplaner'}
             groupMembers={filteredData.members}
             onAddEvent={() => handleOpenEventDialog()}
-            locations={localLocations}
-            onAddLocation={handleAddLocation}
           />
           <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
             <Tabs defaultValue="calendar" className="h-full">
@@ -447,9 +428,3 @@ export default function Dashboard() {
     </>
   );
 }
-
-    
-
-    
-
-

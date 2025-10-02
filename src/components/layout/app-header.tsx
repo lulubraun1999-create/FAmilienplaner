@@ -13,8 +13,6 @@ interface AppHeaderProps {
   groupName: string;
   groupMembers: FamilyMember[];
   onAddEvent: () => void;
-  locations: Location[];
-  onAddLocation: (location: Omit<Location, 'id'>) => Promise<string>;
 }
 
 export default function AppHeader({ groupName, groupMembers, onAddEvent }: AppHeaderProps) {

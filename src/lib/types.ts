@@ -3,6 +3,7 @@ import { Timestamp } from "firebase/firestore";
 export type FamilyMember = {
   id: string;
   name: string;
+  email: string;
   avatar: { // Kept for now to avoid breaking too many things, but image is gone.
     imageHint?: string;
     imageUrl?: string;
@@ -62,5 +63,3 @@ export type DogPlanItem = {
   assignedTo: FamilyMember['id'];
   calendarId?: string;
 };
-
-    
