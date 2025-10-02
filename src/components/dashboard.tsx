@@ -59,12 +59,12 @@ export default function Dashboard() {
   const { data: locationsData, isLoading: locationsLoading } = useCollection<Location>(locationsRef);
     
     useEffect(() => {
-    if (firestore && user && familyName && !eventsLoading && !isDataPopulated && eventsData && eventsData.length === 0) {
+    if (firestore && user && familyName && !eventsLoading && !isDataPopulated && eventsData?.length === 0) {
       const populateFirestore = async () => {
-        // Check if data has already been populated by another user to avoid race conditions
-        if (!eventsRef) return;
-        const querySnapshot = await getDocs(eventsRef);
-        if(!querySnapshot.empty) {
+        const populateRef = doc(firestore, `families/${familyName}/meta`, 'populated');
+        const populateSnap = await getDoc(populateRef);
+
+        if (populateSnap.exists()) {
           setIsDataPopulated(true);
           return;
         }
@@ -72,29 +72,31 @@ export default function Dashboard() {
         const batch = writeBatch(firestore);
 
         initialEvents.forEach(event => {
-          const eventRef = doc(firestore, `families/${familyName}/events`, event.id);
+          const eventRef = doc(collection(firestore, `families/${familyName}/events`));
           batch.set(eventRef, event);
         });
 
         initialTasks.forEach(task => {
-          const taskRef = doc(firestore, `families/${familyName}/tasks`, task.id);
+          const taskRef = doc(collection(firestore, `families/${familyName}/tasks`));
           batch.set(taskRef, task);
         });
         
         initialShoppingListItems.forEach(item => {
-            const itemRef = doc(firestore, `families/${familyName}/shoppingListItems`, item.id);
+            const itemRef = doc(collection(firestore, `families/${familyName}/shoppingListItems`));
             batch.set(itemRef, item);
         });
 
         initialDogPlanItems.forEach(item => {
-            const itemRef = doc(firestore, `families/${familyName}/dogPlan`, item.id);
+            const itemRef = doc(collection(firestore, `families/${familyName}/dogPlan`));
             batch.set(itemRef, item);
         });
 
         initialLocations.forEach(location => {
-            const locationRef = doc(firestore, `families/${familyName}/locations`, location.id);
+            const locationRef = doc(collection(firestore, `families/${familyName}/locations`));
             batch.set(locationRef, location);
         });
+
+        batch.set(populateRef, { populatedBy: user.uid, populatedAt: new Date() });
 
         await batch.commit();
         setIsDataPopulated(true);
@@ -102,7 +104,7 @@ export default function Dashboard() {
 
       populateFirestore().catch(console.error);
     }
-  }, [firestore, user, eventsLoading, isDataPopulated, eventsData, familyName, eventsRef]);
+  }, [firestore, user, familyName, eventsLoading, isDataPopulated, eventsData]);
 
   const me = useMemo(() => {
     // Try to find user by UID first, then by email as a fallback for initial load
