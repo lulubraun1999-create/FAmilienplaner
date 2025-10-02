@@ -15,7 +15,7 @@ import { Label } from './ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Calendar } from './ui/calendar';
 import { CalendarIcon, Clock, Sparkles, Loader2, Users, FileText } from 'lucide-react';
-import { format, set, startOfDay, endOfDay, differenceInMinutes } from 'date-fns';
+import { format, set, startOfDay, endOfDay, differenceInMinutes, isAfter } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import type { FamilyMember, Event, CalendarGroup } from '@/lib/types';
@@ -38,7 +38,8 @@ interface EventDialogProps {
 
 export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamilyMembers, calendarGroups }: EventDialogProps) {
   const [title, setTitle] = useState(event?.title || '');
-  const [date, setDate] = useState<Date | undefined>(event?.start || new Date());
+  const [startDate, setStartDate] = useState<Date | undefined>(event?.start || new Date());
+  const [endDate, setEndDate] = useState<Date | undefined>(event?.end || event?.start || new Date());
   const [startTime, setStartTime] = useState(event ? format(event.start, 'HH:mm') : '10:00');
   const [endTime, setEndTime] = useState(event ? format(event.end, 'HH:mm') : '11:00');
   const [isAllDay, setIsAllDay] = useState(event?.allDay || false);
@@ -52,24 +53,23 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamil
   const { toast } = useToast();
 
   const handleSave = () => {
-    if (!title || !date) return;
+    if (!title || !startDate || !endDate) return;
     
     let startDateTime: Date;
     let endDateTime: Date;
 
     if (isAllDay) {
-        startDateTime = startOfDay(date);
-        endDateTime = endOfDay(date);
+        startDateTime = startOfDay(startDate);
+        endDateTime = endOfDay(endDate);
     } else {
         const [startHours, startMinutes] = startTime.split(':').map(Number);
         const [endHours, endMinutes] = endTime.split(':').map(Number);
         
-        startDateTime = set(date, { hours: startHours, minutes: startMinutes, seconds: 0, milliseconds: 0 });
-        
-        endDateTime = set(date, { hours: endHours, minutes: endMinutes, seconds: 0, milliseconds: 0 });
+        startDateTime = set(startDate, { hours: startHours, minutes: startMinutes, seconds: 0, milliseconds: 0 });
+        endDateTime = set(endDate, { hours: endHours, minutes: endMinutes, seconds: 0, milliseconds: 0 });
 
-        if(endDateTime <= startDateTime) {
-            toast({ title: "Ungültige Endzeit", description: "Die Endzeit muss nach der Startzeit liegen.", variant: 'destructive' });
+        if(!isAfter(endDateTime, startDateTime)) {
+            toast({ title: "Ungültiges Enddatum", description: "Das Ereignisende muss nach dem Beginn liegen.", variant: 'destructive' });
             return;
         }
     }
@@ -90,7 +90,9 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamil
   
   const resetForm = () => {
       setTitle('');
-      setDate(new Date());
+      const today = new Date();
+      setStartDate(today);
+      setEndDate(today);
       setStartTime('10:00');
       setEndTime('11:00');
       setIsAllDay(false);
@@ -103,7 +105,8 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamil
   useEffect(() => {
     if (event) {
       setTitle(event.title);
-      setDate(event.start);
+      setStartDate(event.start);
+      setEndDate(event.end);
       setStartTime(format(event.start, 'HH:mm'));
       setEndTime(format(event.end, 'HH:mm'));
       setIsAllDay(event.allDay || false);
@@ -115,16 +118,22 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamil
     }
   }, [event, isOpen]);
 
+  useEffect(() => {
+    if (startDate && (!endDate || endDate < startDate)) {
+      setEndDate(startDate);
+    }
+  }, [startDate, endDate]);
+
 
   const handleGetSuggestions = () => {
     const [startHours, startMinutes] = startTime.split(':').map(Number);
     const [endHours, endMinutes] = endTime.split(':').map(Number);
-    const startDate = new Date();
-    startDate.setHours(startHours, startMinutes);
-    const endDate = new Date();
-    endDate.setHours(endHours, endMinutes);
+    const sDate = new Date();
+    sDate.setHours(startHours, startMinutes);
+    const eDate = new Date();
+    eDate.setHours(endHours, endMinutes);
 
-    const duration = differenceInMinutes(endDate, startDate);
+    const duration = differenceInMinutes(eDate, sDate);
 
     if (duration <= 0) {
         toast({ title: "Ungültige Dauer", description: "Die Endzeit muss nach der Startzeit liegen, um Vorschläge zu erhalten.", variant: 'destructive' });
@@ -147,7 +156,8 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamil
   const applySuggestion = (startTimeISO: string, endTimeISO: string) => {
       const suggestedStartDate = new Date(startTimeISO);
       const suggestedEndDate = new Date(endTimeISO);
-      setDate(suggestedStartDate);
+      setStartDate(suggestedStartDate);
+      setEndDate(suggestedEndDate);
       setStartTime(format(suggestedStartDate, 'HH:mm'));
       setEndTime(format(suggestedEndDate, 'HH:mm'));
   }
@@ -185,18 +195,7 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamil
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label className="text-right">Datum & Uhrzeit</Label>
-            <div className="col-span-3 grid grid-cols-2 gap-2">
-                <Popover>
-                    <PopoverTrigger asChild>
-                    <Button variant={"outline"} className={cn("justify-start text-left font-normal", !date && "text-muted-foreground")}>
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {date ? format(date, 'PPP', { locale: de }) : <span>Wähle ein Datum</span>}
-                    </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                    <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
-                    </PopoverContent>
-                </Popover>
+            <div className="col-span-3 grid grid-cols-1">
                  <div className="flex items-center space-x-2">
                   <Checkbox id="all-day" checked={isAllDay} onCheckedChange={(checked) => setIsAllDay(Boolean(checked))} />
                   <label htmlFor="all-day" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
@@ -205,21 +204,53 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamil
                 </div>
             </div>
           </div>
-           {!isAllDay && (
+           
             <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Von/Bis</Label>
+                <Label className="text-right">{isAllDay ? 'Startdatum' : 'Von'}</Label>
                 <div className="col-span-3 grid grid-cols-2 gap-2">
-                     <div className="relative">
-                        <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="pl-9"/>
-                    </div>
-                     <div className="relative">
-                        <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="pl-9"/>
-                    </div>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                        <Button variant={"outline"} className={cn("justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {startDate ? format(startDate, 'PPP', { locale: de }) : <span>Wähle ein Datum</span>}
+                        </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                        <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus />
+                        </PopoverContent>
+                    </Popover>
+                     {!isAllDay && (
+                        <div className="relative">
+                            <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="pl-9"/>
+                        </div>
+                     )}
                 </div>
             </div>
-           )}
+
+            <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">{isAllDay ? 'Enddatum' : 'Bis'}</Label>
+                <div className="col-span-3 grid grid-cols-2 gap-2">
+                     <Popover>
+                        <PopoverTrigger asChild>
+                        <Button variant={"outline"} className={cn("justify-start text-left font-normal", !endDate && "text-muted-foreground")}>
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {endDate ? format(endDate, 'PPP', { locale: de }) : <span>Wähle ein Datum</span>}
+                        </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                        <Calendar mode="single" selected={endDate} onSelect={setEndDate} disabled={{ before: startDate }} initialFocus />
+                        </PopoverContent>
+                    </Popover>
+                     {!isAllDay && (
+                        <div className="relative">
+                            <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="pl-9"/>
+                        </div>
+                     )}
+                </div>
+            </div>
+
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="location" className="text-right">Ort</Label>
             <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} className="col-span-3" />
@@ -326,3 +357,5 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamil
     </Dialog>
   );
 }
+
+    
