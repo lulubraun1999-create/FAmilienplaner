@@ -3,12 +3,13 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Plus, Bell, RefreshCw, Moon, Sun } from 'lucide-react';
-import type { FamilyMember, Event } from '@/lib/types';
+import type { FamilyMember, Event, CalendarGroup } from '@/lib/types';
 import EventDialog from '../event-dialog';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useTheme } from 'next-themes';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { calendarGroups, initialFamilyMembers } from '@/lib/data';
 
 interface AppHeaderProps {
   groupName: string;
@@ -81,7 +82,8 @@ export default function AppHeader({ groupName, groupMembers, onAddEvent }: AppHe
         isOpen={isEventDialogOpen}
         setIsOpen={setIsEventDialogOpen}
         onSave={onAddEvent}
-        participants={groupMembers}
+        allFamilyMembers={initialFamilyMembers}
+        calendarGroups={[{id: 'all', name: 'Alle', members: initialFamilyMembers.map(m => m.id)}, ...calendarGroups]}
       />
     </>
   );

@@ -18,24 +18,25 @@ import { CalendarIcon, Clock, Sparkles, Loader2, Users, FileText } from 'lucide-
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import type { FamilyMember, Event } from '@/lib/types';
+import type { FamilyMember, Event, CalendarGroup } from '@/lib/types';
 import { getAISuggestions } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Badge } from './ui/badge';
 import { Textarea } from './ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Checkbox } from './ui/checkbox';
+import { Separator } from './ui/separator';
 
 interface EventDialogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
   onSave: (event: Omit<Event, 'id' | 'calendarId'>) => void;
   event?: Event;
-  participants: FamilyMember[];
+  allFamilyMembers: FamilyMember[];
+  calendarGroups: CalendarGroup[];
 }
 
-export default function EventDialog({ isOpen, setIsOpen, onSave, event, participants }: EventDialogProps) {
+export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamilyMembers, calendarGroups }: EventDialogProps) {
   const [title, setTitle] = useState(event?.title || '');
   const [date, setDate] = useState<Date | undefined>(event?.start || new Date());
   const [startTime, setStartTime] = useState(event ? format(event.start, 'HH:mm') : '10:00');
@@ -108,6 +109,15 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, particip
         : [...prev, participantId]
     );
   };
+  
+  const toggleGroup = (memberIds: readonly string[]) => {
+    const allSelected = memberIds.every(id => selectedParticipants.includes(id));
+    if (allSelected) {
+      setSelectedParticipants(prev => prev.filter(id => !memberIds.includes(id)));
+    } else {
+      setSelectedParticipants(prev => [...new Set([...prev, ...memberIds])]);
+    }
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -163,14 +173,26 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, particip
                   <Button variant="outline" className="w-full justify-start text-left font-normal">
                     <span className="truncate">
                       {selectedParticipants.length > 0 
-                        ? selectedParticipants.map(id => participants.find(p => p.id === id)?.name).join(', ')
+                        ? selectedParticipants.map(id => allFamilyMembers.find(p => p.id === id)?.name).join(', ')
                         : "Teilnehmer auswählen"}
                     </span>
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
+                <PopoverContent className="w-[300px] p-0">
                   <div className="flex flex-col gap-1 p-2">
-                    {participants.map(p => (
+                    {calendarGroups.map(group => (
+                      <React.Fragment key={group.id}>
+                        <Label className="flex items-center gap-2 p-2 rounded-md hover:bg-accent font-semibold">
+                          <Checkbox
+                            checked={group.members.every(id => selectedParticipants.includes(id))}
+                            onCheckedChange={() => toggleGroup(group.members)}
+                          />
+                          <span>{group.name}</span>
+                        </Label>
+                        <Separator />
+                      </React.Fragment>
+                    ))}
+                    {allFamilyMembers.map(p => (
                       <Label key={p.id} className="flex items-center gap-2 p-2 rounded-md hover:bg-accent">
                         <Checkbox 
                           checked={selectedParticipants.includes(p.id)}
