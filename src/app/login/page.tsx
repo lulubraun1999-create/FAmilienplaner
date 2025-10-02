@@ -6,11 +6,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
-import { useAuth } from '@/firebase';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { useAuth, useFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { CalendarDays, Loader2 } from 'lucide-react';
+import { doc, setDoc } from 'firebase/firestore';
+
+
+// IMPORTANT: This should be stored securely, e.g., in Firebase Remote Config or a secure backend.
+// For this prototype, we'll hardcode it, but this is NOT for production.
+const FAMILY_REGISTRATION_CODE = 'BUTZ-BRAUN-2024';
 
 export default function LoginPage() {
   const [loginEmail, setLoginEmail] = useState('');
@@ -18,8 +24,10 @@ export default function LoginPage() {
   const [registerEmail, setRegisterEmail] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
   const [registerName, setRegisterName] = useState('');
+  const [registrationCode, setRegistrationCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  const { firestore } = useFirebase();
   const auth = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -33,7 +41,7 @@ export default function LoginPage() {
     } catch (error: any) {
       toast({
         title: 'Fehler beim Anmelden',
-        description: error.message,
+        description: 'E-Mail oder Passwort ist falsch.',
         variant: 'destructive',
       });
     } finally {
@@ -43,16 +51,46 @@ export default function LoginPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (registrationCode !== FAMILY_REGISTRATION_CODE) {
+        toast({
+            title: 'Falscher Registrierungscode',
+            description: 'Der eingegebene Code ist nicht korrekt. Bitte frage nach dem richtigen Code.',
+            variant: 'destructive',
+        });
+        return;
+    }
+
     setIsLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, registerEmail, registerPassword);
-      // Here you would typically also save the user's name to Firestore
-      console.log('Registered user:', userCredential.user);
+      const user = userCredential.user;
+
+      // Update Firebase Auth profile
+      await updateProfile(user, { displayName: registerName });
+      
+      // Create user document in Firestore
+      if (firestore) {
+        const userDocRef = doc(firestore, 'users', user.uid);
+        await setDoc(userDocRef, {
+            id: user.uid,
+            name: registerName,
+            email: registerEmail,
+            familyName: 'Familie-Butz-Braun' // Hardcoded family name
+        });
+      }
+      
       router.push('/');
     } catch (error: any) {
+      let description = 'Ein unbekannter Fehler ist aufgetreten.';
+      if (error.code === 'auth/email-already-in-use') {
+          description = 'Diese E-Mail-Adresse wird bereits verwendet.';
+      } else if (error.code === 'auth/weak-password') {
+          description = 'Das Passwort ist zu schwach. Es muss mindestens 6 Zeichen lang sein.';
+      }
       toast({
         title: 'Fehler bei der Registrierung',
-        description: error.message,
+        description,
         variant: 'destructive',
       });
     } finally {
@@ -114,11 +152,11 @@ export default function LoginPage() {
           <Card>
             <CardHeader>
               <CardTitle>Registrieren</CardTitle>
-              <CardDescription>Erstelle ein neues Konto für deine Familie.</CardDescription>
+              <CardDescription>Erstelle ein neues Konto für deine Familie. Du benötigst dazu den Familien-Code.</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleRegister} className="space-y-4">
-                <div className="space-y-2">
+                 <div className="space-y-2">
                   <Label htmlFor="register-name">Voller Name</Label>
                   <Input
                     id="register-name"
@@ -149,6 +187,18 @@ export default function LoginPage() {
                     required
                     value={registerPassword}
                     onChange={(e) => setRegisterPassword(e.target.value)}
+                    disabled={isLoading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="register-code">Registrierungscode</Label>
+                  <Input
+                    id="register-code"
+                    type="text"
+                    placeholder="Familien-Code"
+                    required
+                    value={registrationCode}
+                    onChange={(e) => setRegistrationCode(e.target.value)}
                     disabled={isLoading}
                   />
                 </div>

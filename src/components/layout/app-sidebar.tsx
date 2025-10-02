@@ -17,10 +17,10 @@ interface AppSidebarProps {
   onCalendarChange: (id: string) => void;
   familyMembers: FamilyMember[];
   onUpdateProfile: (member: FamilyMember) => void;
+  me: FamilyMember | undefined;
 }
 
-export default function AppSidebar({ calendarGroups, selectedCalendarId, onCalendarChange, familyMembers, onUpdateProfile }: AppSidebarProps) {
-  const me = familyMembers.find(m => m.id === 'me');
+export default function AppSidebar({ calendarGroups, selectedCalendarId, onCalendarChange, familyMembers, onUpdateProfile, me }: AppSidebarProps) {
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
   const auth = useAuth();
   const router = useRouter();
@@ -92,7 +92,7 @@ export default function AppSidebar({ calendarGroups, selectedCalendarId, onCalen
                   </Avatar>
               )}
               <div className="flex-1 text-left">
-                  <p className="text-sm font-semibold">{me?.name}</p>
+                  <p className="text-sm font-semibold">{me?.name || "Profil laden..."}</p>
                   <p className="text-xs text-muted-foreground">Mein Profil</p>
               </div>
           </button>

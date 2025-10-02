@@ -39,8 +39,10 @@ export default function DogPlan({ items, members, onUpdateItem }: DogPlanProps) 
     if (existingItem) {
       onUpdateItem({ ...existingItem, assignedTo: effectiveMemberId });
     } else {
+      // This is a new item creation, ensure it has a unique ID.
+      // A more robust solution might generate this ID on the backend.
       const newItem: DogPlanItem = {
-        id: `d_${weekday}_${timeOfDay}`,
+        id: `d_${weekday}_${timeOfDay}_${new Date().getTime()}`,
         day: weekday,
         timeOfDay: timeOfDay,
         assignedTo: effectiveMemberId,
@@ -64,8 +66,8 @@ export default function DogPlan({ items, members, onUpdateItem }: DogPlanProps) 
             <thead>
               <tr className='border-b'>
                 <th className="p-2 border-r"></th>
-                {weekdays.map(day => (
-                  <th key={day} className="p-2 font-medium">{day}</th>
+                {weekdays.map((day, index) => (
+                  <th key={day} className={cn("p-2 font-medium", index < weekdays.length -1 && "border-r")}>{day}</th>
                 ))}
               </tr>
             </thead>
@@ -73,13 +75,13 @@ export default function DogPlan({ items, members, onUpdateItem }: DogPlanProps) 
               {timesOfDay.map(time => (
                 <tr key={time} className='border-b'>
                   <td className="p-2 font-medium border-r">{time}</td>
-                  {weekdays.map(day => {
+                  {weekdays.map((day, index) => {
                     const item = getItemForSlot(day, time);
                     const member = getMember(item?.assignedTo);
                     return (
-                      <td key={`${day}-${time}`} className="p-2 min-w-[150px]">
+                      <td key={`${day}-${time}`} className={cn("p-2 min-w-[150px]", index < weekdays.length -1 && "border-r")}>
                         <Select
-                            value={member?.id || UNASSIGNED_VALUE}
+                            value={item?.assignedTo || UNASSIGNED_VALUE}
                             onValueChange={(memberId) => handleAssignmentChange(day, time, memberId)}
                         >
                             <SelectTrigger className={cn(!member && "text-muted-foreground")}>

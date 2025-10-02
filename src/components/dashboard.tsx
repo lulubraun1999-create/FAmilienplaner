@@ -11,8 +11,8 @@ import ShoppingList from './shopping-list';
 import DogPlan from './dog-plan';
 import { initialFamilyMembers, initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems, initialLocations, calendarGroups } from '@/lib/data';
 import type { CalendarGroup, Event, Task, ShoppingListItem, FamilyMember, DogPlanItem, Location } from '@/lib/types';
-import { useFirebase, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch, setDoc } from 'firebase/firestore';
+import { useFirebase, useCollection, useMemoFirebase, useUser, useDoc } from '@/firebase';
+import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch, setDoc, getDocs, query, where, getDoc } from 'firebase/firestore';
 import EventDialog from './event-dialog';
 import { Button } from './ui/button';
 import WeekView from './week-view';
@@ -27,7 +27,6 @@ export default function Dashboard() {
   const { user } = useUser();
   const familyName = 'Familie-Butz-Braun';
 
-  // State for dialogs
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | undefined>(undefined);
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
@@ -35,7 +34,6 @@ export default function Dashboard() {
   
   const [isDataPopulated, setIsDataPopulated] = useState(false);
 
-  // Calendar view state
   const [calendarView, setCalendarView] = useState<CalendarViewType>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -45,16 +43,25 @@ export default function Dashboard() {
   const shoppingListRef = useMemoFirebase(() => firestore ? collection(firestore, `families/${familyName}/shoppingListItems`) : null, [firestore, familyName]);
   const dogPlanRef = useMemoFirebase(() => firestore ? collection(firestore, `families/${familyName}/dogPlan`) : null, [firestore, familyName]);
   const locationsRef = useMemoFirebase(() => firestore ? collection(firestore, `families/${familyName}/locations`) : null, [firestore, familyName]);
+  const usersRef = useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]);
 
   const { data: eventsData, isLoading: eventsLoading } = useCollection<Event>(eventsRef);
   const { data: tasksData, isLoading: tasksLoading } = useCollection<Task>(tasksRef);
   const { data: shoppingListData, isLoading: shoppingLoading } = useCollection<ShoppingListItem>(shoppingListRef);
   const { data: dogPlanData, isLoading: dogPlanLoading } = useCollection<DogPlanItem>(dogPlanRef);
   const { data: locationsData, isLoading: locationsLoading } = useCollection<Location>(locationsRef);
-  
+  const { data: usersData, isLoading: usersLoading } = useCollection<FamilyMember>(usersRef);
+    
     useEffect(() => {
-    if (firestore && !eventsLoading && !isDataPopulated && eventsData && eventsData.length === 0) {
+    if (firestore && user && !eventsLoading && !isDataPopulated && eventsData && eventsData.length === 0) {
       const populateFirestore = async () => {
+        // Check if data has already been populated by another user to avoid race conditions
+        const querySnapshot = await getDocs(eventsRef!);
+        if(!querySnapshot.empty) {
+          setIsDataPopulated(true);
+          return;
+        }
+
         const batch = writeBatch(firestore);
 
         initialEvents.forEach(event => {
@@ -88,10 +95,14 @@ export default function Dashboard() {
 
       populateFirestore().catch(console.error);
     }
-  }, [firestore, eventsLoading, isDataPopulated, eventsData, familyName]);
+  }, [firestore, user, eventsLoading, isDataPopulated, eventsData, familyName, eventsRef]);
 
+  const familyMembers = useMemo(() => {
+    if (!usersData) return [];
+    return usersData.map(u => ({ ...u, avatar: {} })); // add empty avatar object
+  }, [usersData]);
 
-  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>(initialFamilyMembers);
+  const me = useMemo(() => familyMembers.find(m => m.id === user?.uid), [familyMembers, user]);
   
   const localEvents = useMemo(() => {
     if (!eventsData) return [];
@@ -119,13 +130,11 @@ export default function Dashboard() {
   
   const handleSaveEvent = (eventData: Omit<Event, 'id'> | Event) => {
     if ('id' in eventData && eventData.id) {
-      // Update existing event
       if (firestore) {
         const eventDocRef = doc(eventsRef, eventData.id);
         updateDoc(eventDocRef, eventData as any);
       }
     } else {
-      // Add new event
       if (firestore && eventsRef) {
         addDoc(eventsRef, eventData);
       }
@@ -147,13 +156,11 @@ export default function Dashboard() {
   const handleSaveTask = (taskData: Omit<Task, 'id' | 'addedBy'> | Task) => {
      const dataWithAddedBy = { ...taskData, addedBy: task?.addedBy || user?.uid || 'unknown' };
      if ('id' in dataWithAddedBy && dataWithAddedBy.id) {
-      // Update existing task
       if (firestore) {
         const taskDocRef = doc(tasksRef, dataWithAddedBy.id);
         updateDoc(taskDocRef, dataWithAddedBy as any);
       }
     } else {
-      // Add new task
       if (firestore && tasksRef) {
         addDoc(tasksRef, dataWithAddedBy);
       }
@@ -192,12 +199,32 @@ export default function Dashboard() {
     }
   };
 
-  const handleUpdateDogPlanItem = (item: DogPlanItem) => {
+ const handleUpdateDogPlanItem = (item: DogPlanItem) => {
     if (dogPlanRef) {
-      const itemDocRef = doc(dogPlanRef, item.id);
-      setDoc(itemDocRef, item, { merge: true });
+        // Check if the item has an ID. If not, it's a new assignment.
+        if (item.id && item.id.startsWith('d_')) {
+            // This is a placeholder ID. We need to find if an item for this slot already exists.
+            const findQuery = query(dogPlanRef, where("day", "==", item.day), where("timeOfDay", "==", item.timeOfDay));
+            getDocs(findQuery).then(snapshot => {
+                if (!snapshot.empty) {
+                    // Update existing item
+                    const existingDoc = snapshot.docs[0];
+                    const itemDocRef = doc(dogPlanRef, existingDoc.id);
+                    updateDoc(itemDocRef, { assignedTo: item.assignedTo });
+                } else if (item.assignedTo) { // Only add if someone is assigned
+                    // Add new item (without placeholder id)
+                    const { id, ...newItemData } = item;
+                    addDoc(dogPlanRef, newItemData);
+                }
+            });
+        } else if (item.id) {
+            // This is an existing item with a real Firestore ID.
+            const itemDocRef = doc(dogPlanRef, item.id);
+            updateDoc(itemDocRef, { assignedTo: item.assignedTo });
+        }
     }
-  };
+};
+
 
   const handleAddLocation = async (newLocation: Omit<Location, 'id'>): Promise<string> => {
     if (locationsRef) {
@@ -208,8 +235,13 @@ export default function Dashboard() {
   };
   
   const handleUpdateProfile = (updatedMember: FamilyMember) => {
-    setFamilyMembers(prevMembers => prevMembers.map(m => m.id === updatedMember.id ? updatedMember : m));
-    // Here you would also update the user's profile in Firestore, e.g., in a /users/{userId} collection
+     if (firestore && user) {
+      const userDocRef = doc(firestore, 'users', user.uid);
+      updateDoc(userDocRef, { name: updatedMember.name });
+      if(auth.currentUser) {
+        updateProfile(auth.currentUser, { displayName: updatedMember.name });
+      }
+    }
   };
 
   const currentGroup = useMemo(() => {
@@ -217,8 +249,8 @@ export default function Dashboard() {
       return { id: 'all', name: 'Gesamte Familie', members: familyMembers.map(m => m.id) };
     }
     if (selectedCalendarId === 'my_calendar') {
-      const me = familyMembers.find(m => m.id === user?.uid);
-      return { id: 'my_calendar', name: 'Mein Kalender', members: me ? [me.id] : [] };
+      const meMember = familyMembers.find(m => m.id === user?.uid);
+      return { id: 'my_calendar', name: 'Mein Kalender', members: meMember ? [meMember.id] : [] };
     }
     return calendarGroups.find(g => g.id === selectedCalendarId);
   }, [selectedCalendarId, familyMembers, user]);
@@ -250,7 +282,7 @@ export default function Dashboard() {
     
     const groupEvents = localEvents.filter(event => event.participants.some(p => memberIdsInGroup.has(p)));
     const groupTasks = localTasks.filter(task => memberIdsInGroup.has(task.assignedTo));
-    const groupShoppingItems = localShoppingItems; // Show all items for other groups
+    const groupShoppingItems = localShoppingItems; 
     const groupDogPlanItems = localDogPlanItems.filter(item => item.assignedTo && memberIdsInGroup.has(item.assignedTo));
     const membersInGroup = familyMembers.filter(m => memberIdsInGroup.has(m.id));
 
@@ -273,6 +305,7 @@ export default function Dashboard() {
           onCalendarChange={setSelectedCalendarId}
           familyMembers={familyMembers}
           onUpdateProfile={handleUpdateProfile}
+          me={me}
         />
         <div className="flex flex-1 flex-col">
           <AppHeader
