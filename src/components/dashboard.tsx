@@ -9,24 +9,37 @@ import CalendarView from './calendar-view';
 import TaskList from './task-list';
 import ShoppingList from './shopping-list';
 import DogPlan from './dog-plan';
-import { calendarGroups, events, familyMembers, shoppingListItems, tasks, dogPlanItems } from '@/lib/data';
+import { calendarGroups, initialEvents, initialFamilyMembers, initialShoppingListItems, initialTasks, initialDogPlanItems } from '@/lib/data';
 import type { CalendarGroup, Event, Task, ShoppingListItem, FamilyMember, DogPlanItem } from '@/lib/types';
 
 export default function Dashboard() {
   const [selectedCalendarId, setSelectedCalendarId] = useState('all');
 
-  const [localEvents, setLocalEvents] = useState<Event[]>(events);
-  const [localTasks, setLocalTasks] = useState<Task[]>(tasks);
-  const [localShoppingItems, setLocalShoppingItems] = useState<ShoppingListItem[]>(shoppingListItems);
-  const [localDogPlanItems, setLocalDogPlanItems] = useState<DogPlanItem[]>(dogPlanItems);
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>(initialFamilyMembers);
+  const [localEvents, setLocalEvents] = useState<Event[]>(initialEvents);
+  const [localTasks, setLocalTasks] = useState<Task[]>(initialTasks);
+  const [localShoppingItems, setLocalShoppingItems] = useState<ShoppingListItem[]>(initialShoppingListItems);
+  const [localDogPlanItems, setLocalDogPlanItems] = useState<DogPlanItem[]>(initialDogPlanItems);
 
   const handleAddEvent = (newEvent: Omit<Event, 'id' | 'calendarId'>) => {
+    let calendarIdForEvent: string;
+
+    if (selectedCalendarId === 'all' || selectedCalendarId === 'my_calendar') {
+        calendarIdForEvent = 'c_all';
+    } else {
+        calendarIdForEvent = selectedCalendarId;
+    }
+
     const newEventWithId: Event = {
       ...newEvent,
       id: `e${Date.now()}`,
-      calendarId: selectedCalendarId === 'all' || selectedCalendarId === 'my_calendar' ? 'c_immediate' : selectedCalendarId,
+      calendarId: calendarIdForEvent,
     };
     setLocalEvents(prev => [...prev, newEventWithId]);
+  };
+  
+  const handleUpdateProfile = (updatedMember: FamilyMember) => {
+    setFamilyMembers(prevMembers => prevMembers.map(m => m.id === updatedMember.id ? updatedMember : m));
   };
 
   const currentGroup = useMemo(() => {
@@ -38,17 +51,19 @@ export default function Dashboard() {
       return { id: 'my_calendar', name: 'Mein Kalender', members: me ? [me.id] : [] };
     }
     return calendarGroups.find(g => g.id === selectedCalendarId);
-  }, [selectedCalendarId]);
+  }, [selectedCalendarId, familyMembers]);
 
   const filteredData = useMemo(() => {
+    const allMemberIds = familyMembers.map(m => m.id);
+
     if (selectedCalendarId === 'all') {
-      return {
-        events: localEvents,
-        tasks: localTasks,
-        shoppingItems: localShoppingItems,
-        dogPlanItems: localDogPlanItems,
-        members: familyMembers
-      };
+        return {
+            events: localEvents.filter(event => event.calendarId === 'c_all' || event.calendarId === 'c_immediate' || event.calendarId === 'c_grandparents' || event.calendarId === 'c_aunt_uncle'),
+            tasks: localTasks.filter(task => task.calendarId === 'c_all' || task.calendarId === 'c_immediate' || task.calendarId === 'c_grandparents' || task.calendarId === 'c_aunt_uncle'),
+            shoppingItems: localShoppingItems.filter(item => item.calendarId === 'c_all' || item.calendarId === 'c_immediate' || item.calendarId === 'c_grandparents' || item.calendarId === 'c_aunt_uncle'),
+            dogPlanItems: localDogPlanItems,
+            members: familyMembers
+        };
     }
 
     if (selectedCalendarId === 'my_calendar') {
@@ -73,7 +88,10 @@ export default function Dashboard() {
     const filteredEvents = localEvents.filter(event => event.calendarId === selectedCalendarId);
     const filteredTasks = localTasks.filter(task => task.calendarId === selectedCalendarId);
     const filteredShoppingItems = localShoppingItems.filter(item => item.calendarId === selectedCalendarId);
-    const filteredDogPlanItems = localDogPlanItems.filter(item => item.calendarId === selectedCalendarId);
+    const filteredDogPlanItems = localDogPlanItems.filter(item => {
+        if (!item.assignedTo) return false; // Unassigned items are not shown in specific group calendars
+        return memberIdsInGroup.has(item.assignedTo);
+    });
 
     const membersInGroup = familyMembers.filter(m => memberIdsInGroup.has(m.id));
 
@@ -84,7 +102,7 @@ export default function Dashboard() {
       dogPlanItems: filteredDogPlanItems,
       members: membersInGroup
     };
-  }, [selectedCalendarId, currentGroup, localEvents, localTasks, localShoppingItems, localDogPlanItems]);
+  }, [selectedCalendarId, currentGroup, localEvents, localTasks, localShoppingItems, localDogPlanItems, familyMembers]);
 
 
   return (
@@ -93,6 +111,8 @@ export default function Dashboard() {
         calendarGroups={calendarGroups}
         selectedCalendarId={selectedCalendarId}
         onCalendarChange={setSelectedCalendarId}
+        familyMembers={familyMembers}
+        onUpdateProfile={handleUpdateProfile}
       />
       <div className="flex flex-1 flex-col">
         <AppHeader
