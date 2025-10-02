@@ -14,7 +14,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Calendar } from './ui/calendar';
-import { CalendarIcon, Clock, Sparkles, Loader2, Users, FileText } from 'lucide-react';
+import { CalendarIcon, Clock, Sparkles, Loader2, Users, FileText, MapPin } from 'lucide-react';
 import { format, set, startOfDay, endOfDay, differenceInMinutes, isAfter } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -193,17 +193,7 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamil
             <Label htmlFor="title" className="text-right">Titel</Label>
             <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} className="col-span-3" />
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label className="text-right">Datum & Uhrzeit</Label>
-            <div className="col-span-3 grid grid-cols-1">
-                 <div className="flex items-center space-x-2">
-                  <Checkbox id="all-day" checked={isAllDay} onCheckedChange={(checked) => setIsAllDay(Boolean(checked))} />
-                  <label htmlFor="all-day" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                    Ganztägig
-                  </label>
-                </div>
-            </div>
-          </div>
+          
            
             <div className="grid grid-cols-4 items-center gap-4">
                 <Label className="text-right">{isAllDay ? 'Startdatum' : 'Von'}</Label>
@@ -251,10 +241,23 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamil
                 </div>
             </div>
 
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="location" className="text-right">Ort</Label>
-            <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} className="col-span-3" />
-          </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+                <div/>
+                <div className="col-span-3 flex items-center space-x-2">
+                  <Checkbox id="all-day" checked={isAllDay} onCheckedChange={(checked) => setIsAllDay(Boolean(checked))} />
+                  <label htmlFor="all-day" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Ganztägig
+                  </label>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-4 items-start gap-4">
+              <Label htmlFor="location" className="text-right pt-2 flex items-center gap-2 justify-end">
+                <MapPin className="h-4 w-4" />
+                Ort
+              </Label>
+              <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} className="col-span-3" placeholder="Ort hinzufügen" />
+            </div>
 
           <div className="grid grid-cols-4 items-start gap-4">
             <Label className="text-right pt-2 flex items-center gap-2 justify-end">
@@ -357,5 +360,3 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamil
     </Dialog>
   );
 }
-
-    
