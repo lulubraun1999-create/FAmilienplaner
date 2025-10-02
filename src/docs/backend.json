@@ -109,6 +109,10 @@
           "type": "string",
           "description": "Determines who can see the task.",
           "enum": ["public", "private"]
+        },
+        "addedBy": {
+            "type": "string",
+            "description": "Reference to User. The user who created the task."
         }
       },
       "required": [
@@ -117,7 +121,8 @@
         "priority",
         "assignedTo",
         "completed",
-        "visibility"
+        "visibility",
+        "addedBy"
       ]
     },
     "ShoppingListItem": {
@@ -136,6 +141,10 @@
         "purchased": {
           "type": "boolean",
           "description": "Indicates whether the item has been purchased."
+        },
+        "assignedTo": {
+            "type": "string",
+            "description": "Reference to User. The user who has taken responsibility for purchasing the item."
         }
       },
       "required": [
@@ -220,3 +229,5 @@
     }
   }
 }
+
+    

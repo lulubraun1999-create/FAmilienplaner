@@ -25,7 +25,11 @@ export default function Dashboard() {
   const [selectedCalendarId, setSelectedCalendarId] = useState('all');
   const { firestore } = useFirebase();
   const { user } = useUser();
-  const familyName = 'Familie-Butz-Braun';
+  
+  const userDocRef = useMemoFirebase(() => (firestore && user?.uid ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
+  const { data: userData } = useDoc<FamilyMember>(userDocRef);
+  const familyName = userData?.familyName || 'Familie-Butz-Braun';
+
 
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | undefined>(undefined);
@@ -43,17 +47,21 @@ export default function Dashboard() {
   const shoppingListRef = useMemoFirebase(() => firestore ? collection(firestore, `families/${familyName}/shoppingListItems`) : null, [firestore, familyName]);
   const dogPlanRef = useMemoFirebase(() => firestore ? collection(firestore, `families/${familyName}/dogPlan`) : null, [firestore, familyName]);
   const locationsRef = useMemoFirebase(() => firestore ? collection(firestore, `families/${familyName}/locations`) : null, [firestore, familyName]);
-  const usersRef = useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]);
+  
+  const usersQuery = useMemoFirebase(() => 
+    (firestore && familyName) ? query(collection(firestore, 'users'), where('familyName', '==', familyName)) : null,
+    [firestore, familyName]
+  );
+  const { data: usersData, isLoading: usersLoading } = useCollection<FamilyMember>(usersQuery);
 
   const { data: eventsData, isLoading: eventsLoading } = useCollection<Event>(eventsRef);
   const { data: tasksData, isLoading: tasksLoading } = useCollection<Task>(tasksRef);
   const { data: shoppingListData, isLoading: shoppingLoading } = useCollection<ShoppingListItem>(shoppingListRef);
   const { data: dogPlanData, isLoading: dogPlanLoading } = useCollection<DogPlanItem>(dogPlanRef);
   const { data: locationsData, isLoading: locationsLoading } = useCollection<Location>(locationsRef);
-  const { data: usersData, isLoading: usersLoading } = useCollection<FamilyMember>(usersRef);
     
     useEffect(() => {
-    if (firestore && user && !eventsLoading && !isDataPopulated && eventsData && eventsData.length === 0) {
+    if (firestore && user && !eventsLoading && !isDataPopulated && eventsData && eventsData.length === 0 && familyName !== 'Familie-Butz-Braun') {
       const populateFirestore = async () => {
         // Check if data has already been populated by another user to avoid race conditions
         const querySnapshot = await getDocs(eventsRef!);
@@ -154,7 +162,7 @@ export default function Dashboard() {
   };
 
   const handleSaveTask = (taskData: Omit<Task, 'id' | 'addedBy'> | Task) => {
-     const dataWithAddedBy = { ...taskData, addedBy: task?.addedBy || user?.uid || 'unknown' };
+     const dataWithAddedBy = { ...taskData, addedBy: (task as Task)?.addedBy || user?.uid || 'unknown' };
      if ('id' in dataWithAddedBy && dataWithAddedBy.id) {
       if (firestore) {
         const taskDocRef = doc(tasksRef, dataWithAddedBy.id);
@@ -238,9 +246,6 @@ export default function Dashboard() {
      if (firestore && user) {
       const userDocRef = doc(firestore, 'users', user.uid);
       updateDoc(userDocRef, { name: updatedMember.name });
-      if(auth.currentUser) {
-        updateProfile(auth.currentUser, { displayName: updatedMember.name });
-      }
     }
   };
 
@@ -424,5 +429,7 @@ export default function Dashboard() {
     </>
   );
 }
+
+    
 
     
