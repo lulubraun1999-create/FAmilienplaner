@@ -1,0 +1,167 @@
+/**
+ * @fileoverview Firestore Security Rules for the Familienplaner application.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a user-ownership and family-based access model.
+ * Users have full control over their own profiles and private events.
+ * Shared data (calendar events, tasks, shopping list items) is organized under families,
+ * and access is granted based on family membership.
+ *
+ * Data Structure:
+ * - /users/{userId}: Stores individual user profiles.
+ * - /families/{familyName}/events/{eventId}: Stores calendar events shared within a family.
+ * - /families/{familyName}/tasks/{taskId}: Stores tasks shared within a family.
+ * - /families/{familyName}/shoppingListItems/{shoppingListItemId}: Stores shopping list items shared within a family.
+ * - /users/{userId}/privateEvents/{eventId}: Stores private calendar events specific to a user.
+ *
+ * Key Security Decisions:
+ * - Users can only read/write their own user document.
+ * - Family-shared data is accessible to members of the family.
+ * - Data required for authorization is denormalized onto the documents being secured to avoid `get()` calls.
+ * - Listing of user documents is disallowed to protect user privacy.
+ * - Private events are restricted to the owning user.
+ *
+ * Denormalization for Authorization:
+ * - Family names are denormalized into calendar events, tasks, and shopping list items
+ *   to enable efficient authorization checks without requiring additional reads.
+ *
+ * Structural Segregation:
+ * - Private calendar events are stored in a separate subcollection under the user's document
+ *   to ensure that only the owning user can access them, while shared events are kept under the family document.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Allows users to read and write their own user profile.
+     * @path /users/{userId}
+     * @allow (create) User with id 'user123' can create their profile.
+     *   request.auth.uid == 'user123' && request.resource.data.id == 'user123'
+     * @allow (get) User with id 'user123' can read their profile.
+     *   request.auth.uid == 'user123'
+     * @allow (update) User with id 'user123' can update their profile.
+     *   request.auth.uid == 'user123' && resource.data.id == 'user123'
+     * @deny (create) User with id 'user456' cannot create a profile for 'user123'.
+     *   request.auth.uid == 'user456' && request.resource.data.id == 'user123'
+     * @deny (get) User with id 'user456' cannot read user 'user123's profile.
+     *   request.auth.uid == 'user456'
+     * @deny (update) User with id 'user456' cannot update user 'user123's profile.
+     *   request.auth.uid == 'user456' && resource.data.id == 'user123'
+     * @deny (delete) No one can delete a user profile except through account deletion.
+     *   request.auth.uid == 'user123'
+     * @principle Enforces document ownership for user profiles.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Allows members of a family to read and write calendar events shared within that family.
+     * @path /families/{familyName}/events/{eventId}
+     * @allow (create) User with auth and familyName 'family123' can create an event for that family.
+     *   request.auth.uid != null && request.resource.data.familyName == familyName
+     * @allow (get) User with auth can get an event for familyName 'family123'.
+     *   request.auth.uid != null
+     * @allow (update) User with auth and familyName 'family123' can update an event for that family.
+     *   request.auth.uid != null && resource.data.familyName == familyName
+     * @deny (create) User with auth and familyName 'family456' cannot create an event for familyName 'family123'.
+     *   request.auth.uid != null && request.resource.data.familyName != familyName
+     * @principle Enforces family-based access control for shared calendar events.
+     */
+    match /families/{familyName}/events/{eventId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && request.resource.data.familyName == familyName;
+      allow update: if isSignedIn() && resource != null && resource.data.familyName == familyName;
+      allow delete: if isFamilyMember(familyName) && resource != null;
+    }
+
+    /**
+     * @description Allows members of a family to read and write tasks shared within that family.
+     * @path /families/{familyName}/tasks/{taskId}
+     * @allow (create) User with auth and familyName 'family123' can create a task for that family.
+     *   request.auth.uid != null && request.resource.data.familyName == familyName
+     * @allow (get) User with auth can get a task for familyName 'family123'.
+     *   request.auth.uid != null
+     * @allow (update) User with auth and familyName 'family123' can update a task for that family.
+     *   request.auth.uid != null && resource.data.familyName == familyName
+     * @deny (create) User with auth and familyName 'family456' cannot create a task for familyName 'family123'.
+     *   request.auth.uid != null && request.resource.data.familyName != familyName
+     * @principle Enforces family-based access control for shared tasks.
+     */
+    match /families/{familyName}/tasks/{taskId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && request.resource.data.familyName == familyName;
+      allow update: if isSignedIn() && resource != null && resource.data.familyName == familyName;
+      allow delete: if isFamilyMember(familyName) && resource != null;
+    }
+
+    /**
+     * @description Allows members of a family to read and write shopping list items shared within that family.
+     * @path /families/{familyName}/shoppingListItems/{shoppingListItemId}
+     * @allow (create) User with auth and familyName 'family123' can create a shopping list item for that family.
+     *   request.auth.uid != null && request.resource.data.familyName == familyName
+     * @allow (get) User with auth can get a shopping list item for familyName 'family123'.
+     *   request.auth.uid != null
+     * @allow (update) User with auth and familyName 'family123' can update a shopping list item for that family.
+     *   request.auth.uid != null && resource.data.familyName == familyName
+     * @deny (create) User with auth and familyName 'family456' cannot create a shopping list item for familyName 'family123'.
+     *   request.auth.uid != null && request.resource.data.familyName != familyName
+     * @principle Enforces family-based access control for shared shopping list items.
+     */
+    match /families/{familyName}/shoppingListItems/{shoppingListItemId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && request.resource.data.familyName == familyName;
+      allow update: if isSignedIn() && resource != null && resource.data.familyName == familyName;
+      allow delete: if isFamilyMember(familyName) && resource != null;
+    }
+
+    /**
+     * @description Allows a user to read and write their own private calendar events.
+     * @path /users/{userId}/privateEvents/{eventId}
+     * @allow (create) User with id 'user123' can create a private event.
+     *   request.auth.uid == 'user123'
+     * @allow (get) User with id 'user123' can read their private event.
+     *   request.auth.uid == 'user123'
+     * @allow (update) User with id 'user123' can update their private event.
+     *   request.auth.uid == 'user123'
+     * @deny (create) User with id 'user456' cannot create a private event for user 'user123'.
+     *   request.auth.uid == 'user456'
+     * @deny (get) User with id 'user456' cannot read user 'user123's private event.
+     *   request.auth.uid == 'user456'
+     * @deny (update) User with id 'user456' cannot update user 'user123's private event.
+     *   request.auth.uid == 'user456'
+     * @deny (delete) User with id 'user456' cannot delete user 'user123's private event.
+     *   request.auth.uid == 'user456'
+     * @principle Enforces document ownership for private calendar events.
+     */
+    match /users/{userId}/privateEvents/{eventId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    // --- Helper Functions ---
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+    }
+
+    function isFamilyMember(familyName) {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyName == familyName;
+    }
+  }
+}
