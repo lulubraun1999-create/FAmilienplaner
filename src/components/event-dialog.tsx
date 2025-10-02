@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useTransition } from 'react';
+import React, { useState, useTransition, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -15,7 +15,7 @@ import { Label } from './ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Calendar } from './ui/calendar';
 import { CalendarIcon, Clock, Sparkles, Loader2, Users, FileText } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, set, startOfDay, endOfDay, differenceInMinutes } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import type { FamilyMember, Event, CalendarGroup } from '@/lib/types';
@@ -40,7 +40,8 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamil
   const [title, setTitle] = useState(event?.title || '');
   const [date, setDate] = useState<Date | undefined>(event?.start || new Date());
   const [startTime, setStartTime] = useState(event ? format(event.start, 'HH:mm') : '10:00');
-  const [duration, setDuration] = useState(60); // in minutes
+  const [endTime, setEndTime] = useState(event ? format(event.end, 'HH:mm') : '11:00');
+  const [isAllDay, setIsAllDay] = useState(event?.allDay || false);
   const [location, setLocation] = useState(event?.location || '');
   const [description, setDescription] = useState(event?.description || '');
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>(event?.participants || []);
@@ -53,11 +54,26 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamil
   const handleSave = () => {
     if (!title || !date) return;
     
-    const [hours, minutes] = startTime.split(':').map(Number);
-    const startDateTime = new Date(date);
-    startDateTime.setHours(hours, minutes);
+    let startDateTime: Date;
+    let endDateTime: Date;
 
-    const endDateTime = new Date(startDateTime.getTime() + duration * 60000);
+    if (isAllDay) {
+        startDateTime = startOfDay(date);
+        endDateTime = endOfDay(date);
+    } else {
+        const [startHours, startMinutes] = startTime.split(':').map(Number);
+        const [endHours, endMinutes] = endTime.split(':').map(Number);
+        
+        startDateTime = set(date, { hours: startHours, minutes: startMinutes, seconds: 0, milliseconds: 0 });
+        
+        endDateTime = set(date, { hours: endHours, minutes: endMinutes, seconds: 0, milliseconds: 0 });
+
+        if(endDateTime <= startDateTime) {
+            toast({ title: "Ungültige Endzeit", description: "Die Endzeit muss nach der Startzeit liegen.", variant: 'destructive' });
+            return;
+        }
+    }
+
 
     onSave({
       title,
@@ -66,6 +82,7 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamil
       location,
       description,
       participants: selectedParticipants,
+      allDay: isAllDay,
     });
     setIsOpen(false);
     resetForm();
@@ -75,14 +92,45 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamil
       setTitle('');
       setDate(new Date());
       setStartTime('10:00');
-      setDuration(60);
+      setEndTime('11:00');
+      setIsAllDay(false);
       setLocation('');
       setDescription('');
       setSelectedParticipants([]);
       setSuggestions([]);
   }
 
+  useEffect(() => {
+    if (event) {
+      setTitle(event.title);
+      setDate(event.start);
+      setStartTime(format(event.start, 'HH:mm'));
+      setEndTime(format(event.end, 'HH:mm'));
+      setIsAllDay(event.allDay || false);
+      setLocation(event.location || '');
+      setDescription(event.description || '');
+      setSelectedParticipants(event.participants);
+    } else {
+      resetForm();
+    }
+  }, [event, isOpen]);
+
+
   const handleGetSuggestions = () => {
+    const [startHours, startMinutes] = startTime.split(':').map(Number);
+    const [endHours, endMinutes] = endTime.split(':').map(Number);
+    const startDate = new Date();
+    startDate.setHours(startHours, startMinutes);
+    const endDate = new Date();
+    endDate.setHours(endHours, endMinutes);
+
+    const duration = differenceInMinutes(endDate, startDate);
+
+    if (duration <= 0) {
+        toast({ title: "Ungültige Dauer", description: "Die Endzeit muss nach der Startzeit liegen, um Vorschläge zu erhalten.", variant: 'destructive' });
+        return;
+    }
+
     startTransition(async () => {
         const result = await getAISuggestions(duration, preferredTime);
         if (result.success) {
@@ -96,10 +144,12 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamil
     });
   };
   
-  const applySuggestion = (startTimeISO: string) => {
-      const suggestedDate = new Date(startTimeISO);
-      setDate(suggestedDate);
-      setStartTime(format(suggestedDate, 'HH:mm'));
+  const applySuggestion = (startTimeISO: string, endTimeISO: string) => {
+      const suggestedStartDate = new Date(startTimeISO);
+      const suggestedEndDate = new Date(endTimeISO);
+      setDate(suggestedStartDate);
+      setStartTime(format(suggestedStartDate, 'HH:mm'));
+      setEndTime(format(suggestedEndDate, 'HH:mm'));
   }
 
   const toggleParticipant = (participantId: string) => {
@@ -147,16 +197,29 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamil
                     <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
                     </PopoverContent>
                 </Popover>
-                <div className="relative">
-                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="pl-9"/>
+                 <div className="flex items-center space-x-2">
+                  <Checkbox id="all-day" checked={isAllDay} onCheckedChange={(checked) => setIsAllDay(Boolean(checked))} />
+                  <label htmlFor="all-day" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Ganztägig
+                  </label>
                 </div>
             </div>
           </div>
-           <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="duration" className="text-right">Dauer (Minuten)</Label>
-              <Input id="duration" type="number" value={duration} onChange={(e) => setDuration(parseInt(e.target.value))} className="col-span-3" />
-          </div>
+           {!isAllDay && (
+            <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Von/Bis</Label>
+                <div className="col-span-3 grid grid-cols-2 gap-2">
+                     <div className="relative">
+                        <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="pl-9"/>
+                    </div>
+                     <div className="relative">
+                        <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="pl-9"/>
+                    </div>
+                </div>
+            </div>
+           )}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="location" className="text-right">Ort</Label>
             <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} className="col-span-3" />
@@ -219,39 +282,41 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamil
             <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} className="col-span-3" />
           </div>
 
-          <div className="grid grid-cols-4 items-start gap-4">
-            <Label className="text-right pt-2">KI-Vorschläge</Label>
-            <div className="col-span-3 space-y-2">
-                <div className='grid grid-cols-2 gap-2'>
-                    <Select value={preferredTime} onValueChange={setPreferredTime}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Bevorzugte Zeit" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="morning">Morgens</SelectItem>
-                            <SelectItem value="afternoon">Nachmittags</SelectItem>
-                            <SelectItem value="evening">Abends</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <Button variant="outline" onClick={handleGetSuggestions} disabled={isPending}>
-                        {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                        Zeit vorschlagen
-                    </Button>
-                </div>
-                {suggestions && suggestions.length > 0 && (
-                    <div className="space-y-2 rounded-md border p-2">
-                       <Label className="text-xs text-muted-foreground">Vorschläge:</Label>
-                       <div className='flex flex-wrap gap-2'>
-                        {suggestions.map((s, i) => (
-                           <Button key={i} size="sm" variant="secondary" onClick={() => applySuggestion(s.startTime)}>
-                               {format(new Date(s.startTime), 'HH:mm')}
-                           </Button>
-                        ))}
-                       </div>
+          {!isAllDay && (
+            <div className="grid grid-cols-4 items-start gap-4">
+                <Label className="text-right pt-2">KI-Vorschläge</Label>
+                <div className="col-span-3 space-y-2">
+                    <div className='grid grid-cols-2 gap-2'>
+                        <Select value={preferredTime} onValueChange={setPreferredTime}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Bevorzugte Zeit" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="morning">Morgens</SelectItem>
+                                <SelectItem value="afternoon">Nachmittags</SelectItem>
+                                <SelectItem value="evening">Abends</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Button variant="outline" onClick={handleGetSuggestions} disabled={isPending}>
+                            {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                            Zeit vorschlagen
+                        </Button>
                     </div>
-                )}
+                    {suggestions && suggestions.length > 0 && (
+                        <div className="space-y-2 rounded-md border p-2">
+                        <Label className="text-xs text-muted-foreground">Vorschläge:</Label>
+                        <div className='flex flex-wrap gap-2'>
+                            {suggestions.map((s, i) => (
+                            <Button key={i} size="sm" variant="secondary" onClick={() => applySuggestion(s.startTime, s.endTime)}>
+                                {format(new Date(s.startTime), 'HH:mm')} - {format(new Date(s.endTime), 'HH:mm')}
+                            </Button>
+                            ))}
+                        </div>
+                        </div>
+                    )}
+                </div>
             </div>
-          </div>
+          )}
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Abbrechen</Button>

@@ -17,6 +17,7 @@ export type Event = {
   title: string;
   start: Date;
   end: Date;
+  allDay?: boolean;
   location?: string;
   description?: string;
   participants: FamilyMember['id'][];

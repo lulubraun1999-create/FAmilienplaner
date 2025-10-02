@@ -54,13 +54,12 @@ export default function Dashboard() {
   }, [selectedCalendarId, familyMembers]);
 
   const filteredData = useMemo(() => {
-    const allMemberIds = familyMembers.map(m => m.id);
-
     if (selectedCalendarId === 'all') {
+        const allEvents = localEvents;
         return {
-            events: localEvents.filter(event => event.calendarId === 'c_all' || event.calendarId === 'c_immediate' || event.calendarId === 'c_grandparents' || event.calendarId === 'c_aunt_uncle'),
-            tasks: localTasks.filter(task => task.calendarId === 'c_all' || task.calendarId === 'c_immediate' || task.calendarId === 'c_grandparents' || task.calendarId === 'c_aunt_uncle'),
-            shoppingItems: localShoppingItems.filter(item => item.calendarId === 'c_all' || item.calendarId === 'c_immediate' || item.calendarId === 'c_grandparents' || item.calendarId === 'c_aunt_uncle'),
+            events: allEvents,
+            tasks: localTasks,
+            shoppingItems: localShoppingItems,
             dogPlanItems: localDogPlanItems,
             members: familyMembers
         };
@@ -68,6 +67,7 @@ export default function Dashboard() {
 
     if (selectedCalendarId === 'my_calendar') {
         const meId = 'me';
+        // Show events where I am a participant, or events from my personal calendar (if such a concept is formally introduced)
         const myEvents = localEvents.filter(event => event.participants.includes(meId));
         const myTasks = localTasks.filter(task => task.assignedTo === meId);
         const myShoppingItems = localShoppingItems.filter(item => item.addedBy === meId);
@@ -85,6 +85,7 @@ export default function Dashboard() {
 
     const memberIdsInGroup = new Set(currentGroup?.members);
 
+    // For a specific family group, show only events for that calendarId
     const filteredEvents = localEvents.filter(event => event.calendarId === selectedCalendarId);
     const filteredTasks = localTasks.filter(task => task.calendarId === selectedCalendarId);
     const filteredShoppingItems = localShoppingItems.filter(item => item.calendarId === selectedCalendarId);
