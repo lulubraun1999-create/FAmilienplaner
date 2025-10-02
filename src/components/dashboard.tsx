@@ -509,6 +509,7 @@ export default function Dashboard() {
                     onTaskClick={handleOpenTaskDialog}
                     onNewTaskClick={() => handleOpenTaskDialog()}
                     onUpdateTask={handleUpdateTask}
+                    onDeleteTask={handleDeleteTask}
                 />
               </TabsContent>
               <TabsContent value="shopping" className="mt-4">

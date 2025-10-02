@@ -10,9 +10,9 @@ import { de } from 'date-fns/locale';
 import { cn, getInitials } from '@/lib/utils';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { Plus } from 'lucide-react';
-import { doc, updateDoc } from 'firebase/firestore';
-import { useFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { Plus, Trash2 } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
+
 
 interface TaskListProps {
   tasks: Task[];
@@ -20,6 +20,7 @@ interface TaskListProps {
   onTaskClick: (task: Task) => void;
   onNewTaskClick: () => void;
   onUpdateTask: (taskId: string, data: Partial<Task>) => void;
+  onDeleteTask: (taskId: string) => void;
 }
 
 const priorityMap: Record<Task['priority'], { label: string; className: string }> = {
@@ -28,7 +29,7 @@ const priorityMap: Record<Task['priority'], { label: string; className: string }
   low: { label: 'Niedrig', className: 'bg-green-500' },
 };
 
-export default function TaskList({ tasks, members, onTaskClick, onNewTaskClick, onUpdateTask }: TaskListProps) {
+export default function TaskList({ tasks, members, onTaskClick, onNewTaskClick, onUpdateTask, onDeleteTask }: TaskListProps) {
     const handleToggle = (task: Task) => {
         onUpdateTask(task.id, { completed: !task.completed });
     };
@@ -49,7 +50,7 @@ export default function TaskList({ tasks, members, onTaskClick, onNewTaskClick, 
           {tasks.map((task) => {
             const member = getMember(task.assignedTo);
             return (
-              <li key={task.id} className="flex items-center gap-4 rounded-md border p-3 transition-colors hover:bg-secondary/50">
+              <li key={task.id} className="flex items-center gap-4 rounded-md border p-3 transition-colors hover:bg-secondary/50 group">
                 <Checkbox
                   id={`task-${task.id}`}
                   checked={task.completed}
@@ -66,21 +67,48 @@ export default function TaskList({ tasks, members, onTaskClick, onNewTaskClick, 
                     </p>
                     </div>
                 </button>
-                <div className="flex items-center gap-2" onClick={() => onTaskClick(task)}>
-                    <Badge variant="outline" className="hidden sm:inline-flex items-center gap-1.5">
+                <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="hidden sm:inline-flex items-center gap-1.5 cursor-pointer" onClick={() => onTaskClick(task)}>
                         <span className={cn("h-2 w-2 rounded-full", priorityMap[task.priority].className)}></span>
                         {priorityMap[task.priority].label}
                     </Badge>
                     {member && (
-                        <Avatar className="h-8 w-8">
-                            <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
-                        </Avatar>
+                        <div className="cursor-pointer" onClick={() => onTaskClick(task)}>
+                          <Avatar className="h-8 w-8">
+                              <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
+                          </Avatar>
+                        </div>
                     )}
+                     <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100" onClick={(e) => e.stopPropagation()}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Bist du sicher?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Diese Aktion kann nicht rückgängig gemacht werden. Die Aufgabe '{task.title}' wird dauerhaft gelöscht.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => onDeleteTask(task.id)}>Löschen</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                 </div>
               </li>
             );
           })}
         </ul>
+        {tasks.length === 0 && (
+          <div className="text-center text-muted-foreground py-8">
+            <p>Keine Aufgaben gefunden.</p>
+            <Button variant="link" onClick={onNewTaskClick}>Jetzt eine neue Aufgabe erstellen.</Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
