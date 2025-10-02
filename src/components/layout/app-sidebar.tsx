@@ -7,6 +7,9 @@ import type { CalendarGroup, FamilyMember } from '@/lib/types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import ProfileDialog from '../profile-dialog';
 import { getInitials } from '@/lib/utils';
+import { useAuth } from '@/firebase';
+import { signOut } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 
 interface AppSidebarProps {
   calendarGroups: CalendarGroup[];
@@ -19,6 +22,13 @@ interface AppSidebarProps {
 export default function AppSidebar({ calendarGroups, selectedCalendarId, onCalendarChange, familyMembers, onUpdateProfile }: AppSidebarProps) {
   const me = familyMembers.find(m => m.id === 'me');
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
+  const auth = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push('/login');
+  };
 
   return (
     <>
@@ -74,7 +84,7 @@ export default function AppSidebar({ calendarGroups, selectedCalendarId, onCalen
           </ul>
         </nav>
 
-        <div className="mt-auto">
+        <div className="mt-auto space-y-2">
           <button className="flex w-full items-center gap-3 rounded-lg p-2 transition-colors hover:bg-secondary" onClick={() => setIsProfileDialogOpen(true)}>
               {me && (
                   <Avatar className="h-10 w-10">
@@ -85,7 +95,10 @@ export default function AppSidebar({ calendarGroups, selectedCalendarId, onCalen
                   <p className="text-sm font-semibold">{me?.name}</p>
                   <p className="text-xs text-muted-foreground">Mein Profil</p>
               </div>
-              <LogOut className="h-5 w-5 text-muted-foreground" />
+          </button>
+          <button onClick={handleLogout} className="flex w-full items-center gap-3 rounded-lg p-2 transition-colors text-muted-foreground hover:bg-secondary hover:text-destructive">
+            <LogOut className="h-5 w-5" />
+            <span className="text-sm font-medium">Abmelden</span>
           </button>
         </div>
       </aside>

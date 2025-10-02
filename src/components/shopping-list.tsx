@@ -43,7 +43,7 @@ export default function ShoppingList({ items, members, onAddItem, onUpdateItem, 
   
   const purchasedItems = useMemo(() => {
       return items.filter(item => item.purchased).sort((a,b) => (getMember(a.assignedTo || '')?.name || '').localeCompare(getMember(b.assignedTo || '')?.name || ''));
-  }, [items]);
+  }, [items, getMember]);
 
   const handleTakeItem = (itemId: string) => {
     onUpdateItem(itemId, { assignedTo: currentUserId });

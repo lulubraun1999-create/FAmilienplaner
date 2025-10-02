@@ -11,7 +11,7 @@ import ShoppingList from './shopping-list';
 import DogPlan from './dog-plan';
 import { initialFamilyMembers, initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems, initialLocations, calendarGroups } from '@/lib/data';
 import type { CalendarGroup, Event, Task, ShoppingListItem, FamilyMember, DogPlanItem, Location } from '@/lib/types';
-import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirebase, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch, setDoc } from 'firebase/firestore';
 import EventDialog from './event-dialog';
 import { Button } from './ui/button';
@@ -23,7 +23,8 @@ type CalendarViewType = 'month' | 'week' | 'day';
 
 export default function Dashboard() {
   const [selectedCalendarId, setSelectedCalendarId] = useState('all');
-  const { firestore, user } = useFirebase();
+  const { firestore } = useFirebase();
+  const { user } = useUser();
   const familyName = 'Familie-Butz-Braun';
 
   // State for dialogs
@@ -99,12 +100,12 @@ export default function Dashboard() {
 
   const localTasks = useMemo(() => {
     if (!tasksData) return [];
-    const currentUserId = 'me';
+    const currentUserId = user?.uid;
     return tasksData
       .map(t => ({...t, dueDate: (t.dueDate as any).toDate()}))
       .filter(t => t.visibility === 'public' || (t.visibility === 'private' && (t.assignedTo === currentUserId || t.addedBy === currentUserId)));
 
-  }, [tasksData]);
+  }, [tasksData, user]);
   
   const localShoppingItems = useMemo(() => shoppingListData || [], [shoppingListData]);
   const localDogPlanItems = useMemo(() => dogPlanData || [], [dogPlanData]);
@@ -144,7 +145,7 @@ export default function Dashboard() {
   };
 
   const handleSaveTask = (taskData: Omit<Task, 'id' | 'addedBy'> | Task) => {
-     const dataWithAddedBy = { ...taskData, addedBy: task?.addedBy || 'me' };
+     const dataWithAddedBy = { ...taskData, addedBy: task?.addedBy || user?.uid || 'unknown' };
      if ('id' in dataWithAddedBy && dataWithAddedBy.id) {
       // Update existing task
       if (firestore) {
@@ -170,7 +171,7 @@ export default function Dashboard() {
     if (shoppingListRef && user) {
         addDoc(shoppingListRef, {
             name: itemName,
-            addedBy: 'me', // Hardcoded for now, should be dynamic
+            addedBy: user.uid,
             purchased: false,
             assignedTo: assignedTo || '',
         });
@@ -208,6 +209,7 @@ export default function Dashboard() {
   
   const handleUpdateProfile = (updatedMember: FamilyMember) => {
     setFamilyMembers(prevMembers => prevMembers.map(m => m.id === updatedMember.id ? updatedMember : m));
+    // Here you would also update the user's profile in Firestore, e.g., in a /users/{userId} collection
   };
 
   const currentGroup = useMemo(() => {
@@ -215,25 +217,25 @@ export default function Dashboard() {
       return { id: 'all', name: 'Gesamte Familie', members: familyMembers.map(m => m.id) };
     }
     if (selectedCalendarId === 'my_calendar') {
-      const me = familyMembers.find(m => m.id === 'me');
+      const me = familyMembers.find(m => m.id === user?.uid);
       return { id: 'my_calendar', name: 'Mein Kalender', members: me ? [me.id] : [] };
     }
     return calendarGroups.find(g => g.id === selectedCalendarId);
-  }, [selectedCalendarId, familyMembers]);
+  }, [selectedCalendarId, familyMembers, user]);
 
   const filteredData = useMemo(() => {
+    const currentUserId = user?.uid;
+
     if (selectedCalendarId === 'all') {
         return { events: localEvents, tasks: localTasks, shoppingItems: localShoppingItems, dogPlanItems: localDogPlanItems, members: familyMembers };
     }
     
-    const meId = 'me'; // assuming 'me' is the current user's id
-
     if (selectedCalendarId === 'my_calendar') {
-        const myEvents = localEvents.filter(event => event.participants.includes(meId));
-        const myTasks = localTasks.filter(task => task.assignedTo === meId);
-        const myShoppingItems = localShoppingItems.filter(item => item.assignedTo === meId);
-        const myDogPlanItems = localDogPlanItems.filter(item => item.assignedTo === meId);
-        const meMember = familyMembers.find(m => m.id === meId);
+        const myEvents = localEvents.filter(event => event.participants.includes(currentUserId || ''));
+        const myTasks = localTasks.filter(task => task.assignedTo === currentUserId);
+        const myShoppingItems = localShoppingItems.filter(item => item.assignedTo === currentUserId);
+        const myDogPlanItems = localDogPlanItems.filter(item => item.assignedTo === currentUserId);
+        const meMember = familyMembers.find(m => m.id === currentUserId);
 
         return {
             events: myEvents,
@@ -259,7 +261,7 @@ export default function Dashboard() {
       dogPlanItems: groupDogPlanItems,
       members: membersInGroup
     };
-  }, [selectedCalendarId, currentGroup, localEvents, localTasks, localShoppingItems, localDogPlanItems, familyMembers]);
+  }, [selectedCalendarId, currentGroup, localEvents, localTasks, localShoppingItems, localDogPlanItems, familyMembers, user]);
 
 
   return (
@@ -357,7 +359,7 @@ export default function Dashboard() {
                     onAddItem={handleAddShoppingItem}
                     onUpdateItem={handleUpdateShoppingItem}
                     onDeleteItem={handleDeleteShoppingItem}
-                    currentUserId='me'
+                    currentUserId={user?.uid || ''}
                 />
               </TabsContent>
               <TabsContent value="dog-plan" className="mt-4">
