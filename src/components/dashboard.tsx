@@ -38,16 +38,14 @@ export default function Dashboard() {
 
   const filteredData = useMemo(() => {
     if (selectedCalendarId === 'all') {
-      // Show only items that are not assigned to any specific group.
-      // Currently, no data is 'all', so this will be empty, which is the desired behavior for now.
       const memberIdsInGroup = new Set(familyMembers.map(m => m.id));
       const membersInGroup = familyMembers.filter(m => memberIdsInGroup.has(m.id));
 
       return {
-        events: [],
-        tasks: [],
-        shoppingItems: [],
-        dogPlanItems: [],
+        events: localEvents,
+        tasks: localTasks,
+        shoppingItems: localShoppingItems,
+        dogPlanItems: localDogPlanItems,
         members: membersInGroup
       };
     }
