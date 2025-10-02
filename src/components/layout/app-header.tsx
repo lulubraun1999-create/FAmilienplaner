@@ -33,7 +33,7 @@ export default function AppHeader({ groupName, groupMembers, onAddEvent }: AppHe
       <header className="flex h-20 items-center justify-between border-b bg-card px-4 sm:px-6 lg:px-8">
         <div>
           <h2 className="text-xl font-bold">{groupName}</h2>
-          <div className="mt-1 flex items-center -space-x-2">
+          <div className="mt-1 flex items-center">
             {groupMembers.map((member) => (
               <Avatar key={member.id} className="h-6 w-6 border-2 border-card">
                 <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
