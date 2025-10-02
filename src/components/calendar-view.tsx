@@ -114,13 +114,26 @@ export default function CalendarView({ events, locations, onEventClick, currentD
                         <div className='mt-2 space-y-1'>
                             {getEventsForDay(day).slice(0, 3).map(event => {
                                 const location = event.locationId ? getLocationById(event.locationId) : null;
-                                const isStartOfDay = isSameDay(new Date(event.start), day);
+                                const eventStart = new Date(event.start);
+                                const eventEnd = new Date(event.end);
+                                const isFirstDay = isSameDay(eventStart, day);
+                                const isLastDay = isSameDay(eventEnd, day);
+
+                                const badgeStyle = cn(
+                                    'w-full truncate text-xs flex items-center justify-start gap-2 cursor-pointer',
+                                    {
+                                        'rounded-r-none': !isLastDay,
+                                        'rounded-l-none': !isFirstDay,
+                                        'rounded-full': isFirstDay && isLastDay,
+                                    }
+                                );
+                                
                                 return (
                                     <Tooltip key={event.id}>
                                     <TooltipTrigger asChild>
                                         <button className='w-full text-left' onClick={() => onEventClick(event)}>
-                                            <Badge className='w-full truncate text-xs flex items-center justify-start gap-2 cursor-pointer' variant='secondary'>
-                                            {isStartOfDay && !event.allDay && <span>{format(new Date(event.start.toString()), 'HH:mm')}</span>}
+                                            <Badge className={badgeStyle} variant='secondary'>
+                                            {isFirstDay && !event.allDay && <span>{format(eventStart, 'HH:mm')}</span>}
                                             <span className='truncate'>{event.title}</span>
                                             {location && <MapPin className="h-3 w-3 flex-shrink-0" />}
                                             </Badge>
@@ -128,7 +141,7 @@ export default function CalendarView({ events, locations, onEventClick, currentD
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p className='font-bold'>{event.title}</p>
-                                        <p>{format(new Date(event.start.toString()), 'HH:mm')} - {format(new Date(event.end.toString()), 'HH:mm')}</p>
+                                        <p>{format(eventStart, 'HH:mm')} - {format(eventEnd, 'HH:mm')}</p>
                                         {location && <p className='text-muted-foreground'>{location.name}: {location.street} {location.housenumber}, {location.postalcode} {location.city}</p>}
                                         {event.description && <p className='text-sm italic mt-1'>{event.description}</p>}
                                         <p className='text-xs text-muted-foreground mt-2'>Klicken zum Bearbeiten</p>
