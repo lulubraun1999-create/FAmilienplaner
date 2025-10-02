@@ -12,7 +12,7 @@ import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Plus } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
-import { useFirebase } from '@/firebase';
+import { useFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 
 interface TaskListProps {
   tasks: Task[];
@@ -33,7 +33,14 @@ export default function TaskList({ tasks, members, onTaskClick, onNewTaskClick }
     const handleToggle = (task: Task) => {
         if(firestore) {
             const taskRef = doc(firestore, `families/Familie-Butz-Braun/tasks/${task.id}`);
-            updateDoc(taskRef, { completed: !task.completed });
+            const updateData = { completed: !task.completed };
+            updateDoc(taskRef, updateData).catch(e => {
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                    path: taskRef.path,
+                    operation: 'update',
+                    requestResourceData: updateData
+                }));
+            });
         }
     };
 
@@ -89,3 +96,5 @@ export default function TaskList({ tasks, members, onTaskClick, onNewTaskClick }
     </Card>
   );
 }
+
+    

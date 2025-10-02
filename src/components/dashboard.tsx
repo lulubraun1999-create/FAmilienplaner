@@ -11,8 +11,9 @@ import ShoppingList from './shopping-list';
 import DogPlan from './dog-plan';
 import { initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems, initialLocations, initialFamilyMembers } from '@/lib/data';
 import type { CalendarGroup, Event, Task, ShoppingListItem, FamilyMember, DogPlanItem, Location } from '@/lib/types';
-import { useFirebase, useCollection, useMemoFirebase, useUser, useDoc, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useFirebase, useCollection, useMemoFirebase, useUser, useDoc } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch, setDoc, getDoc, query, where, getDocs } from 'firebase/firestore';
+import { errorEmitter, FirestorePermissionError } from '@/firebase';
 import EventDialog from './event-dialog';
 import { Button } from './ui/button';
 import WeekView from './week-view';
@@ -30,12 +31,10 @@ export default function Dashboard() {
   const { data: userData } = useDoc<FamilyMember>(userDocRef);
   const familyName = userData?.familyName;
   
-  // Use static family members to avoid permission issues
   const familyMembers = useMemo(() => {
     if (user) {
         const currentUserInList = initialFamilyMembers.find(m => m.email === user.email);
         if(currentUserInList) {
-            // make sure the current user has the correct id
             currentUserInList.id = user.uid;
             return initialFamilyMembers;
         }
@@ -74,18 +73,10 @@ export default function Dashboard() {
     useEffect(() => {
     if (firestore && user && familyName && !eventsLoading && !isDataPopulated && eventsData?.length === 0) {
       const populateFirestore = async () => {
-        // This check prevents re-populating data on every load.
-        // We use a document in a meta collection to track if population has occurred.
         const populateRef = doc(firestore, `families/${familyName}/meta`, 'populated');
         const populateSnap = await getDoc(populateRef);
 
-        if (populateSnap.exists()) {
-          setIsDataPopulated(true);
-          return;
-        }
-
-        // Only populate for the first family to avoid data clashes
-        if (familyName !== 'Familie-Butz-Braun') {
+        if (populateSnap.exists() || familyName !== 'Familie-Butz-Braun') {
             setIsDataPopulated(true);
             return;
         }
@@ -117,18 +108,21 @@ export default function Dashboard() {
             batch.set(locationRef, location);
         });
 
-        // Mark that this family has been populated
         batch.set(populateRef, { populatedBy: user.uid, populatedAt: new Date() });
 
         try {
             await batch.commit();
         } catch(e) {
-            console.error("Error populating data", e);
+             errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: `families/${familyName}/`,
+                operation: 'write',
+                requestResourceData: {note: 'Batch write for initial data population'}
+            }));
         }
         setIsDataPopulated(true);
       };
 
-      populateFirestore().catch(console.error);
+      populateFirestore();
     }
   }, [firestore, user, familyName, eventsLoading, isDataPopulated, eventsData]);
 
@@ -137,12 +131,8 @@ export default function Dashboard() {
   }, [familyMembers, user]);
 
   const calendarGroups: CalendarGroup[] = useMemo(() => {
-    if (!familyName) return [];
-    if (familyName === 'Familie-Butz-Braun') {
-        return [{ id: 'c_butz_braun', name: 'Kinder', members: ['me'] }]; // Example group
-    }
     return [];
-  }, [familyName]);
+  }, []);
   
   const localEvents = useMemo(() => {
     if (!eventsData) return [];
@@ -165,13 +155,12 @@ export default function Dashboard() {
 
   const handleOpenEventDialog = (event?: Event) => {
     if (!event && user) {
-        // For new events, pre-fill the current user as a participant
         const newEventTemplate: Partial<Event> = {
             title: '',
             participants: [user.uid],
             allDay: false,
             start: new Date(),
-            end: new Date(new Date().getTime() + 60 * 60 * 1000), // 1 hour later
+            end: new Date(new Date().getTime() + 60 * 60 * 1000), 
         };
         setSelectedEvent(newEventTemplate as Event);
     } else {
@@ -565,9 +554,5 @@ export default function Dashboard() {
     </>
   );
 }
-
-    
-
-    
 
     
