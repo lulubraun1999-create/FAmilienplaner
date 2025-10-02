@@ -19,9 +19,9 @@ export const familyMembers: FamilyMember[] = [
 ];
 
 export const calendarGroups: CalendarGroup[] = [
-  { id: 'c_immediate', name: 'Kernfamilie', members: ['dad', 'mom', 'sister', 'me'] },
-  { id: 'c_grandparents', name: 'Großeltern', members: ['grandma', 'grandpa'] },
-  { id: 'c_aunt_uncle', name: 'Tante & Onkel', members: ['aunt', 'uncle'] },
+  { id: 'c_immediate', name: 'Familie Butz/Braun', members: ['dad', 'mom', 'sister', 'me'] },
+  { id: 'c_grandparents', name: 'Familie Fröhle', members: ['grandma', 'grandpa'] },
+  { id: 'c_aunt_uncle', name: 'Familie Fröhle/Weiß', members: ['aunt', 'uncle'] },
 ];
 
 const today = new Date();
