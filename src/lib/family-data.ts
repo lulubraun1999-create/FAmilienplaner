@@ -16,7 +16,7 @@ export const familyData = [
         code: 'Rolf1784',
         members: [
             { id: 'user-lukas', name: 'Lukas Braun', email: 'lulubraun1999@gmail.com', avatar: {} },
-            // Add other members of Familie Butz/Braun here if they will register
+            { id: 'user-lena', name: 'Lena Butz', email: 'lena.butz@example.com', avatar: {} }
         ]
     },
     {
