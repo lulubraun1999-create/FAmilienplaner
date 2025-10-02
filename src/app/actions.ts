@@ -29,7 +29,7 @@ export async function getAISuggestions(
         const result = await suggestOptimalEventTimes(input);
         
         if (!result.suggestedEventTimes || result.suggestedEventTimes.length === 0) {
-          return { success: false; error: 'AI could not suggest any time slots.' };
+          return { success: false, error: 'AI could not suggest any time slots.' };
         }
 
         return { success: true, suggestions: result.suggestedEventTimes };
