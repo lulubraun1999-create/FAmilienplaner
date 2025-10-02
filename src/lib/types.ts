@@ -42,6 +42,7 @@ export type Task = {
   priority: 'low' | 'medium' | 'high';
   completed: boolean;
   visibility: 'public' | 'private';
+  addedBy: FamilyMember['id'];
 };
 
 export type ShoppingListItem = {

@@ -72,18 +72,18 @@ export const initialEvents: Event[] = [
 ];
 
 export const initialTasks: Task[] = [
-    { id: 't1', title: 'Müll rausbringen', assignedTo: 'sister', dueDate: today, priority: 'medium', completed: false, visibility: 'public' },
-    { id: 't2', title: 'Geschenk für Oma kaufen', assignedTo: 'me', dueDate: tomorrow, priority: 'high', completed: false, visibility: 'public' },
-    { id: 't3', title: 'Auto zur Werkstatt bringen', assignedTo: 'dad', dueDate: nextWeek, priority: 'medium', completed: false, visibility: 'private' },
-    { id: 't4', title: 'Blumen gießen', assignedTo: 'grandma', dueDate: today, priority: 'low', completed: true, visibility: 'public' },
+    { id: 't1', title: 'Müll rausbringen', assignedTo: 'sister', dueDate: today, priority: 'medium', completed: false, visibility: 'public', addedBy: 'mom' },
+    { id: 't2', title: 'Geschenk für Oma kaufen', assignedTo: 'me', dueDate: tomorrow, priority: 'high', completed: false, visibility: 'public', addedBy: 'mom' },
+    { id: 't3', title: 'Auto zur Werkstatt bringen', assignedTo: 'dad', dueDate: nextWeek, priority: 'medium', completed: false, visibility: 'private', addedBy: 'dad' },
+    { id: 't4', title: 'Blumen gießen', assignedTo: 'grandma', dueDate: today, priority: 'low', completed: true, visibility: 'public', addedBy: 'grandma' },
 ];
 
 export const initialShoppingListItems: ShoppingListItem[] = [
-    { id: 's1', name: 'Milch', addedBy: 'mom', purchased: false },
-    { id: 's2', name: 'Brot', addedBy: 'mom', purchased: true },
-    { id: 's3', name: 'Eier', addedBy: 'dad', purchased: false },
-    { id: 's4', name: 'Butter', addedBy: 'me', purchased: false },
-    { id: 's5', name: 'Kaffee', addedBy: 'grandpa', purchased: false },
+    { id: 's1', name: 'Milch', addedBy: 'mom', purchased: false, assignedTo: '' },
+    { id: 's2', name: 'Brot', addedBy: 'mom', purchased: true, assignedTo: 'mom' },
+    { id: 's3', name: 'Eier', addedBy: 'dad', purchased: false, assignedTo: 'dad' },
+    { id: 's4', name: 'Butter', addedBy: 'me', purchased: false, assignedTo: '' },
+    { id: 's5', name: 'Kaffee', addedBy: 'grandpa', purchased: false, assignedTo: '' },
 ];
 
 export const initialDogPlanItems: DogPlanItem[] = [

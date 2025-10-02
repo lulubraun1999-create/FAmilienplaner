@@ -102,7 +102,7 @@ export default function Dashboard() {
     const currentUserId = 'me';
     return tasksData
       .map(t => ({...t, dueDate: (t.dueDate as any).toDate()}))
-      .filter(t => t.visibility === 'public' || (t.visibility === 'private' && (t.assignedTo === currentUserId)));
+      .filter(t => t.visibility === 'public' || (t.visibility === 'private' && (t.assignedTo === currentUserId || t.addedBy === currentUserId)));
 
   }, [tasksData]);
   
@@ -143,17 +143,18 @@ export default function Dashboard() {
     setIsTaskDialogOpen(true);
   };
 
-  const handleSaveTask = (taskData: Omit<Task, 'id'> | Task) => {
-     if ('id' in taskData && taskData.id) {
+  const handleSaveTask = (taskData: Omit<Task, 'id' | 'addedBy'> | Task) => {
+     const dataWithAddedBy = { ...taskData, addedBy: 'me' }; // Hardcoded for now
+     if ('id' in dataWithAddedBy && dataWithAddedBy.id) {
       // Update existing task
       if (firestore) {
-        const taskDocRef = doc(tasksRef, taskData.id);
-        updateDoc(taskDocRef, taskData as any);
+        const taskDocRef = doc(tasksRef, dataWithAddedBy.id);
+        updateDoc(taskDocRef, dataWithAddedBy as any);
       }
     } else {
       // Add new task
       if (firestore && tasksRef) {
-        addDoc(tasksRef, taskData);
+        addDoc(tasksRef, dataWithAddedBy);
       }
     }
   }

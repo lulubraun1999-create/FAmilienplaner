@@ -28,7 +28,7 @@ import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 interface TaskDialogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  onSave: (task: Omit<Task, 'id'> | Task) => void;
+  onSave: (task: Omit<Task, 'id' | 'addedBy'> | Task) => void;
   onDelete: (taskId: string) => void;
   task?: Task;
   familyMembers: FamilyMember[];
@@ -80,7 +80,7 @@ export default function TaskDialog({ isOpen, setIsOpen, onSave, onDelete, task, 
     };
 
     if (task?.id) {
-      onSave({ id: task.id, ...taskData });
+      onSave({ id: task.id, ...taskData, addedBy: task.addedBy });
     } else {
       onSave(taskData);
     }
@@ -177,7 +177,7 @@ export default function TaskDialog({ isOpen, setIsOpen, onSave, onDelete, task, 
                 </div>
                 <div className="flex items-center space-x-2">
                     <RadioGroupItem value="private" id="vis-private" />
-                    <Label htmlFor="vis-private">Privat (nur für die zugewiesene Person)</Label>
+                    <Label htmlFor="vis-private">Privat (nur für die zugewiesene Person & Ersteller)</Label>
                 </div>
             </RadioGroup>
           </div>

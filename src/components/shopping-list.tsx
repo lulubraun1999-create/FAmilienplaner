@@ -7,9 +7,10 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import type { ShoppingListItem, FamilyMember } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
-import { Plus, Trash2, Hand } from 'lucide-react';
+import { Plus, Trash2, Hand, User as UserIcon, Users } from 'lucide-react';
 import { Input } from './ui/input';
 import { Separator } from './ui/separator';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 
 interface ShoppingListProps {
   items: ShoppingListItem[];
@@ -24,15 +25,15 @@ export default function ShoppingList({ items, members, onAddItem, onUpdateItem, 
   const [newItemName, setNewItemName] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   
-  const handleAddNewItem = () => {
+  const handleAddNewItem = (assignedTo?: string) => {
     if (newItemName.trim()) {
-      onAddItem(newItemName.trim());
+      onAddItem(newItemName.trim(), assignedTo);
       setNewItemName('');
       setIsAdding(false);
     }
   };
 
-  const getMember = (memberId: string) => members.find(m => m.id === memberId);
+  const getMember = (memberId: string | undefined) => members.find(m => m.id === memberId);
 
   const { familyItems, myItems } = useMemo(() => {
     const familyItems = items.filter(item => !item.assignedTo && !item.purchased);
@@ -53,7 +54,7 @@ export default function ShoppingList({ items, members, onAddItem, onUpdateItem, 
   };
   
   const handleTogglePurchased = (itemId: string, purchased: boolean) => {
-      onUpdateItem(itemId, { purchased });
+      onUpdateItem(itemId, { purchased, assignedTo: purchased ? (items.find(i => i.id === itemId)?.assignedTo || currentUserId) : items.find(i => i.id === itemId)?.assignedTo });
   }
 
   const ShoppingListItemRow = ({ item, showAssignee = false }: { item: ShoppingListItem; showAssignee?: boolean }) => {
@@ -125,16 +126,45 @@ export default function ShoppingList({ items, members, onAddItem, onUpdateItem, 
       </CardHeader>
       <CardContent>
         {isAdding && (
-          <div className="flex gap-2 mb-4">
-            <Input
+          <div className="flex flex-col gap-2 mb-4 p-4 border rounded-lg bg-muted/50">
+             <Input
               value={newItemName}
               onChange={(e) => setNewItemName(e.target.value)}
               placeholder="Was wird benötigt?"
               onKeyDown={(e) => e.key === 'Enter' && handleAddNewItem()}
               autoFocus
             />
-            <Button onClick={handleAddNewItem}>Für alle hinzufügen</Button>
-            <Button variant="ghost" onClick={() => setIsAdding(false)}>Abbrechen</Button>
+            <div className="flex items-center justify-between">
+                <div className='flex items-center gap-2'>
+                    <Button onClick={() => handleAddNewItem()} size="sm">
+                        <Users className="mr-2 h-4 w-4" />
+                        Für alle hinzufügen
+                    </Button>
+                     <Button onClick={() => handleAddNewItem(currentUserId)} variant="secondary" size="sm">
+                        <UserIcon className="mr-2 h-4 w-4" />
+                        Für mich
+                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="secondary" size="sm">
+                                Für jemand anderen...
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            {members.filter(m => m.id !== currentUserId).map(member => (
+                                <DropdownMenuItem key={member.id} onClick={() => handleAddNewItem(member.id)}>
+                                     <Avatar className="h-6 w-6 mr-2">
+                                        <AvatarImage src={member.avatar.imageUrl} alt={member.name} data-ai-hint={member.avatar.imageHint}/>
+                                        <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <span>{member.name}</span>
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+                <Button variant="ghost" onClick={() => setIsAdding(false)}>Abbrechen</Button>
+            </div>
           </div>
         )}
         
