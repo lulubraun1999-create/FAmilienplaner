@@ -13,14 +13,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Music, Loader2 } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { familyData } from '@/lib/family-data';
 
-// Data for families and their registration codes.
-// In a real production app, this would likely come from a database.
-const families = [
-    { id: 'Familie-Butz-Braun', name: 'Familie Butz/Braun', code: 'Rolf1784' },
-    { id: 'Familie-Froehle', name: 'Familie Fröhle', code: 'Froehle2024' },
-    { id: 'Familie-Weiss', name: 'Familie Weiß', code: 'Weiss2024' },
-];
 
 export default function LoginPage() {
   const [loginEmail, setLoginEmail] = useState('');
@@ -57,7 +51,7 @@ export default function LoginPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const selectedFamily = families.find(f => f.id === selectedFamilyId);
+    const selectedFamily = familyData.find(f => f.id === selectedFamilyId);
 
     if (!selectedFamily) {
         toast({
@@ -86,8 +80,12 @@ export default function LoginPage() {
       
       if (firestore) {
         const userDocRef = doc(firestore, 'users', user.uid);
+        // Find the matching member from static data to get the correct static ID
+        const staticUser = selectedFamily.members.find(m => m.email === registerEmail);
+        const staticId = staticUser ? staticUser.id : user.uid; // Fallback to UID if not found
+
         const userData = {
-            id: user.uid,
+            id: staticId, // Use the static ID from family-data.ts
             name: registerName,
             email: registerEmail,
             familyName: selectedFamily.id
@@ -219,7 +217,7 @@ export default function LoginPage() {
                             <SelectValue placeholder="Wähle deine Familie" />
                         </SelectTrigger>
                         <SelectContent>
-                            {families.map(family => (
+                            {familyData.map(family => (
                                 <SelectItem key={family.id} value={family.id}>{family.name}</SelectItem>
                             ))}
                         </SelectContent>

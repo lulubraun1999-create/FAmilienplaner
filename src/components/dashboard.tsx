@@ -9,16 +9,17 @@ import CalendarView from './calendar-view';
 import TaskList from './task-list';
 import ShoppingList from './shopping-list';
 import DogPlan from './dog-plan';
-import { initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems, initialLocations, initialFamilyMembers } from '@/lib/data';
+import { initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems, initialLocations } from '@/lib/data';
 import type { CalendarGroup, Event, Task, ShoppingListItem, FamilyMember, DogPlanItem, Location } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser, useDoc } from '@/firebase';
-import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch, setDoc } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { errorEmitter, FirestorePermissionError } from '@/firebase';
 import EventDialog from './event-dialog';
 import { Button } from './ui/button';
 import WeekView from './week-view';
 import DayView from './day-view';
 import TaskDialog from './task-dialog';
+import { familyData } from '@/lib/family-data';
 
 type CalendarViewType = 'month' | 'week' | 'day';
 
@@ -31,7 +32,11 @@ export default function Dashboard() {
   const { data: userData } = useDoc<FamilyMember>(userDocRef);
   const familyName = userData?.familyName;
   
-  const familyMembers = useMemo(() => initialFamilyMembers, []);
+  const familyMembers = useMemo(() => {
+    if (!familyName) return [];
+    const familyInfo = familyData.find(f => f.id === familyName);
+    return familyInfo?.members || [];
+  }, [familyName]);
 
 
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
@@ -108,7 +113,9 @@ export default function Dashboard() {
   }, [firestore, user, familyName, eventsLoading, isDataPopulated, eventsData]);
 
   const me = useMemo(() => {
-    return familyMembers?.find(m => m.id === 'me');
+    // In a real app, the user's ID would be the Firestore Auth UID.
+    // We find the corresponding user from our static family data.
+    return familyMembers?.find(m => m.id === 'user-lukas');
   }, [familyMembers]);
 
   const calendarGroups: CalendarGroup[] = useMemo(() => {
@@ -123,11 +130,14 @@ export default function Dashboard() {
   const localTasks = useMemo(() => {
     if (!tasksData) return [];
     const currentUserId = user?.uid;
+    // Map Firestore user UIDs to static IDs if necessary, for now we assume they might match or be mapped
+    // For this app, we'll check against the "me" id from the static list
+    const myStaticId = me?.id;
     return tasksData
       .map(t => ({...t, dueDate: (t.dueDate as any).toDate()}))
-      .filter(t => t.visibility === 'public' || (t.visibility === 'private' && (t.assignedTo === currentUserId || t.addedBy === currentUserId)));
+      .filter(t => t.visibility === 'public' || (t.visibility === 'private' && (t.assignedTo === myStaticId || t.addedBy === myStaticId)));
 
-  }, [tasksData, user]);
+  }, [tasksData, user, me]);
   
   const localShoppingItems = useMemo(() => shoppingListData || [], [shoppingListData]);
   const localDogPlanItems = useMemo(() => dogPlanData || [], [dogPlanData]);
@@ -135,10 +145,10 @@ export default function Dashboard() {
 
 
   const handleOpenEventDialog = (event?: Event) => {
-    if (!event && user) {
+    if (!event && me) { // Use 'me' object which has a consistent ID
         const newEventTemplate: Partial<Event> = {
             title: '',
-            participants: [user.uid],
+            participants: [me.id],
             allDay: false,
             start: new Date(),
             end: new Date(new Date().getTime() + 60 * 60 * 1000), 
@@ -193,7 +203,7 @@ export default function Dashboard() {
   };
 
   const handleSaveTask = (taskData: Omit<Task, 'id' | 'addedBy'> | Task) => {
-     const dataWithAddedBy = { ...taskData, addedBy: ('addedBy' in taskData && taskData.addedBy) || user?.uid || 'unknown' };
+     const dataWithAddedBy = { ...taskData, addedBy: ('addedBy' in taskData && taskData.addedBy) || me?.id || 'unknown' };
      if ('id' in dataWithAddedBy && dataWithAddedBy.id) {
       if (firestore && tasksRef) {
         const taskDocRef = doc(tasksRef, dataWithAddedBy.id);
@@ -247,10 +257,10 @@ export default function Dashboard() {
   };
 
   const handleAddShoppingItem = (itemName: string, assignedTo?: string) => {
-    if (shoppingListRef && user) {
+    if (shoppingListRef && me) {
         const newItem = {
             name: itemName,
-            addedBy: user.uid,
+            addedBy: me.id,
             purchased: false,
             assignedTo: assignedTo || '',
         };
@@ -345,6 +355,8 @@ export default function Dashboard() {
   
   const handleUpdateProfile = (updatedMember: FamilyMember) => {
      if (firestore && user) {
+      // This is tricky because the static data can't be updated.
+      // We can update the user's display name in Firebase Auth, though.
       const userDocRef = doc(firestore, 'users', user.uid);
       const updateData = { name: updatedMember.name };
       updateDoc(userDocRef, updateData).catch(e => {
@@ -369,7 +381,6 @@ export default function Dashboard() {
   }, [selectedCalendarId, familyMembers, me, calendarGroups]);
 
   const filteredData = useMemo(() => {
-    const currentUserId = user?.uid;
     const members = familyMembers || [];
 
     if (selectedCalendarId === 'all' || !currentGroup) {
@@ -408,7 +419,7 @@ export default function Dashboard() {
       dogPlanItems: groupDogPlanItems,
       members: membersInGroup
     };
-  }, [selectedCalendarId, currentGroup, localEvents, localTasks, localShoppingItems, localDogPlanItems, familyMembers, user, me]);
+  }, [selectedCalendarId, currentGroup, localEvents, localTasks, localShoppingItems, localDogPlanItems, familyMembers, me]);
 
 
   return (
@@ -507,7 +518,7 @@ export default function Dashboard() {
                     onAddItem={handleAddShoppingItem}
                     onUpdateItem={handleUpdateShoppingItem}
                     onDeleteItem={handleDeleteShoppingItem}
-                    currentUserId={user?.uid || ''}
+                    currentUserId={me?.id || ''}
                 />
               </TabsContent>
               <TabsContent value="dog-plan" className="mt-4">
@@ -533,7 +544,7 @@ export default function Dashboard() {
         setIsOpen={setIsTaskDialogOpen}
         onSave={handleSaveTask}
         onDelete={handleDeleteTask}
-        task={selectedTask}
+        task={selectedEvent}
         familyMembers={familyMembers || []}
       />
     </>

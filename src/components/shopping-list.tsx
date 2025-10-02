@@ -166,29 +166,25 @@ export default function ShoppingList({ items, members, onAddItem, onUpdateItem, 
         )}
         
         <div className='space-y-6'>
-            <div>
-                <h3 className='font-semibold mb-2'>Mein Anteil</h3>
-                {myItems.length > 0 ? (
+            {myItems.length > 0 && (
+                 <div>
+                    <h3 className='font-semibold mb-2'>Mein Anteil</h3>
                     <ul className="space-y-2 rounded-md border p-2">
                         {myItems.map(item => <ShoppingListItemRow key={item.id} item={item} />)}
                     </ul>
-                ) : (
-                    <p className='text-sm text-muted-foreground text-center p-4 border rounded-md'>Du hast keine Artikel übernommen.</p>
-                )}
-            </div>
+                </div>
+            )}
             
-            <Separator />
+           {myItems.length > 0 && familyItems.length > 0 && <Separator />}
 
-            <div>
-                <h3 className='font-semibold mb-2'>Für die Familie</h3>
-                {familyItems.length > 0 ? (
+            {familyItems.length > 0 && (
+                <div>
+                    <h3 className='font-semibold mb-2'>Für die Familie</h3>
                      <ul className="space-y-2 rounded-md border p-2">
                         {familyItems.map(item => <ShoppingListItemRow key={item.id} item={item} />)}
                     </ul>
-                ) : (
-                    <p className='text-sm text-muted-foreground text-center p-4 border rounded-md'>Aktuell gibt es nichts für die Familie einzukaufen.</p>
-                )}
-            </div>
+                </div>
+            )}
 
             {purchasedItems.length > 0 && (
                  <>

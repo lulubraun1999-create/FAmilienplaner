@@ -1,18 +1,7 @@
-import type { FamilyMember, CalendarGroup, Event, Task, ShoppingListItem, DogPlanItem, Location } from './types';
+import type { Event, Task, ShoppingListItem, DogPlanItem, Location } from './types';
 import { Timestamp } from 'firebase/firestore';
 
 // This data is now only used for initial population and as a fallback.
-export const initialFamilyMembers: FamilyMember[] = [
-    { id: 'me', name: 'Lukas Braun', email: 'lulubraun1999@gmail.com', avatar: {} },
-    // Other example users have been removed as they are not registered.
-    // New users should be added via the registration form.
-];
-
-export const calendarGroups: CalendarGroup[] = [
-  { id: 'c_butz_braun', name: 'Familie Butz/Braun', members: ['me'] },
-  { id: 'c_froehle', name: 'Familie Fröhle', members: [] },
-  { id: 'c_froehle_weiss', name: 'Familie Fröhle/Weiß', members: [] },
-];
 
 const today = new Date();
 const tomorrow = new Date(today);
@@ -34,7 +23,7 @@ export const initialEvents: Event[] = [
     title: 'Fußballtraining',
     start: new Date(new Date(today).setHours(17, 0, 0, 0)),
     end: new Date(new Date(today).setHours(18, 30, 0, 0)),
-    participants: ['me'], // Adjusted to a valid user
+    participants: ['user-lukas'], 
     locationId: 'loc1',
   },
   {
@@ -42,24 +31,24 @@ export const initialEvents: Event[] = [
     title: 'Zahnarzttermin',
     start: new Date(new Date(tomorrow).setHours(10, 0, 0, 0)),
     end: new Date(new Date(tomorrow).setHours(10, 30, 0, 0)),
-    participants: ['me'],
+    participants: ['user-lukas'],
     locationId: 'loc2'
   },
 ];
 
 export const initialTasks: Task[] = [
-    { id: 't1', title: 'Müll rausbringen', assignedTo: 'me', dueDate: today, priority: 'medium', completed: false, visibility: 'public', addedBy: 'me' },
-    { id: 't2', title: 'Geschenk für Oma kaufen', assignedTo: 'me', dueDate: tomorrow, priority: 'high', completed: false, visibility: 'public', addedBy: 'me' },
+    { id: 't1', title: 'Müll rausbringen', assignedTo: 'user-lukas', dueDate: today, priority: 'medium', completed: false, visibility: 'public', addedBy: 'user-lukas' },
+    { id: 't2', title: 'Geschenk für Oma kaufen', assignedTo: 'user-lukas', dueDate: tomorrow, priority: 'high', completed: false, visibility: 'public', addedBy: 'user-lukas' },
 ];
 
 export const initialShoppingListItems: ShoppingListItem[] = [
-    { id: 's1', name: 'Milch', addedBy: 'me', purchased: false, assignedTo: '' },
-    { id: 's2', name: 'Brot', addedBy: 'me', purchased: true, assignedTo: 'me' },
+    { id: 's1', name: 'Milch', addedBy: 'user-lukas', purchased: false, assignedTo: '' },
+    { id: 's2', name: 'Brot', addedBy: 'user-lukas', purchased: true, assignedTo: 'user-lukas' },
 ];
 
 export const initialDogPlanItems: DogPlanItem[] = [
-    { id: 'd_mo_m_init', day: 'Montag', timeOfDay: 'Morgen', assignedTo: 'me' },
-    { id: 'd_mo_a_init', day: 'Montag', timeOfDay: 'Abend', assignedTo: 'me' },
+    { id: 'd_mo_m_init', day: 'Montag', timeOfDay: 'Morgen', assignedTo: 'user-lukas' },
+    { id: 'd_mo_a_init', day: 'Montag', timeOfDay: 'Abend', assignedTo: 'user-lukas' },
 ];
 
 
