@@ -22,11 +22,19 @@ export const familyData = [
     {
         id: 'Familie-Weiss-Froehle',
         name: 'Familie Weiß/Fröhle',
-        code: 'WF2024', // I've created a new simple code, you can change it if you want.
+        code: 'WF2024',
         members: [
             // Add members of Familie Weiß/Fröhle here
         ]
     },
+    {
+        id: 'Familie-Froehle',
+        name: 'Familie Fröhle',
+        code: 'F2024', // A new simple code, you can change it if you want.
+        members: [
+            // Add members of Familie Fröhle here
+        ]
+    }
 ];
 
 // A flat list of all members for easier lookup.
