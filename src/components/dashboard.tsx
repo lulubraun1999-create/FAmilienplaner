@@ -9,10 +9,10 @@ import CalendarView from './calendar-view';
 import TaskList from './task-list';
 import ShoppingList from './shopping-list';
 import DogPlan from './dog-plan';
-import { initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems, initialLocations, initialFamilyMembers } from '@/lib/data';
+import { initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems, initialLocations } from '@/lib/data';
 import type { CalendarGroup, Event, Task, ShoppingListItem, FamilyMember, DogPlanItem, Location } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser, useDoc } from '@/firebase';
-import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch, setDoc, getDoc, query, where, getDocs } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch, setDoc, getDoc, query, where } from 'firebase/firestore';
 import { errorEmitter, FirestorePermissionError } from '@/firebase';
 import EventDialog from './event-dialog';
 import { Button } from './ui/button';
@@ -31,13 +31,13 @@ export default function Dashboard() {
   const { data: userData } = useDoc<FamilyMember>(userDocRef);
   const familyName = userData?.familyName;
   
-  const { data: familyMembers, isLoading: familyMembersLoading } = useCollection<FamilyMember>(
-      useMemoFirebase(() => 
-          (firestore && familyName) 
-          ? query(collection(firestore, 'users'), where('familyName', '==', familyName)) 
-          : null,
-      [firestore, familyName])
-  );
+  const familyMembersQuery = useMemoFirebase(() => 
+      (firestore && familyName) 
+      ? query(collection(firestore, 'users'), where('familyName', '==', familyName)) 
+      : null,
+  [firestore, familyName]);
+  
+  const { data: familyMembers, isLoading: familyMembersLoading } = useCollection<FamilyMember>(familyMembersQuery);
 
 
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
