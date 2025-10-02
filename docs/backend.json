@@ -1,7 +1,6 @@
 {
   "entities": {
     "User": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
       "type": "object",
       "description": "Represents a user of the Familienplaner application.",
@@ -10,13 +9,9 @@
           "type": "string",
           "description": "Unique identifier for the User entity."
         },
-        "firstName": {
+        "name": {
           "type": "string",
-          "description": "The first name of the user."
-        },
-        "lastName": {
-          "type": "string",
-          "description": "The last name of the user."
+          "description": "The name of the user."
         },
         "email": {
           "type": "string",
@@ -30,14 +25,12 @@
       },
       "required": [
         "id",
-        "firstName",
-        "lastName",
+        "name",
         "email",
         "familyName"
       ]
     },
     "CalendarEvent": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "CalendarEvent",
       "type": "object",
       "description": "Represents an event in the calendar.",
@@ -54,27 +47,27 @@
           "type": "string",
           "description": "A description of the event."
         },
-        "startTime": {
+        "start": {
           "type": "string",
           "description": "The start time of the event.",
           "format": "date-time"
         },
-        "endTime": {
+        "end": {
           "type": "string",
           "description": "The end time of the event.",
           "format": "date-time"
         },
-        "location": {
-          "type": "string",
-          "description": "The location of the event."
+        "allDay": {
+          "type": "boolean",
+          "description": "Indicates if the event is an all-day event."
         },
-        "creatorId": {
+        "locationId": {
           "type": "string",
-          "description": "Reference to User. (Relationship: User 1:N CalendarEvent).  The user who created the event."
+          "description": "Reference to Location. The location of the event."
         },
-        "attendeeIds": {
+        "participants": {
           "type": "array",
-          "description": "References to Users. (Relationship: User N:N CalendarEvent).  The users who are attending the event.",
+          "description": "References to Users. The users who are attending the event.",
           "items": {
             "type": "string"
           }
@@ -83,13 +76,11 @@
       "required": [
         "id",
         "title",
-        "startTime",
-        "endTime",
-        "creatorId"
+        "start",
+        "end"
       ]
     },
     "Task": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Task",
       "type": "object",
       "description": "Represents a task assigned to a user.",
@@ -115,11 +106,11 @@
           "type": "string",
           "description": "The priority level of the task (e.g., high, medium, low)."
         },
-        "assignedToId": {
+        "assignedTo": {
           "type": "string",
-          "description": "Reference to User. (Relationship: User 1:N Task). The user to whom the task is assigned."
+          "description": "Reference to User. The user to whom the task is assigned."
         },
-        "isCompleted": {
+        "completed": {
           "type": "boolean",
           "description": "Indicates whether the task is completed."
         }
@@ -129,12 +120,11 @@
         "title",
         "dueDate",
         "priority",
-        "assignedToId",
-        "isCompleted"
+        "assignedTo",
+        "completed"
       ]
     },
     "ShoppingListItem": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "ShoppingListItem",
       "type": "object",
       "description": "Represents an item on the shopping list.",
@@ -143,30 +133,58 @@
           "type": "string",
           "description": "Unique identifier for the ShoppingListItem entity."
         },
-        "itemName": {
+        "name": {
           "type": "string",
           "description": "The name of the item."
         },
-        "quantity": {
-          "type": "number",
-          "description": "The quantity of the item needed."
-        },
-        "addedById": {
+        "addedBy": {
           "type": "string",
-          "description": "Reference to User. (Relationship: User 1:N ShoppingListItem). The user who added the item to the list."
+          "description": "Reference to User. The user who added the item to the list."
         },
-        "isPurchased": {
+        "purchased": {
           "type": "boolean",
           "description": "Indicates whether the item has been purchased."
         }
       },
       "required": [
         "id",
-        "itemName",
-        "quantity",
-        "addedById",
-        "isPurchased"
+        "name",
+        "addedBy",
+        "purchased"
       ]
+    },
+    "DogPlanItem": {
+      "title": "DogPlanItem",
+      "type": "object",
+      "description": "Represents an item in the dog plan.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "day": {
+          "type": "string"
+        },
+        "timeOfDay": {
+          "type": "string"
+        },
+        "assignedTo": {
+          "type": "string"
+        }
+      },
+      "required": ["id", "day", "timeOfDay", "assignedTo"]
+    },
+    "Location": {
+      "title": "Location",
+      "type": "object",
+      "description": "Represents a physical location.",
+      "properties": {
+        "id": { "type": "string" },
+        "street": { "type": "string" },
+        "housenumber": { "type": "string" },
+        "postalcode": { "type": "string" },
+        "city": { "type": "string" }
+      },
+      "required": ["id", "street", "housenumber", "postalcode", "city"]
     }
   },
   "auth": {
@@ -176,104 +194,41 @@
     ]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/users/{userId}",
-        "definition": {
-          "entityName": "User",
-          "schema": {
-            "$ref": "#/backend/entities/User"
-          },
-          "description": "Stores user profiles. User ID is used for path-based ownership.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user."
-            }
-          ]
-        }
+    "/families/{familyName}/events/{eventId}": {
+      "schema": {
+        "$ref": "#/entities/CalendarEvent"
       },
-      {
-        "path": "/families/{familyName}/events/{eventId}",
-        "definition": {
-          "entityName": "CalendarEvent",
-          "schema": {
-            "$ref": "#/backend/entities/CalendarEvent"
-          },
-          "description": "Stores calendar events for each family. Includes denormalized 'familyName' for authorization independence.",
-          "params": [
-            {
-              "name": "familyName",
-              "description": "The name of the family."
-            },
-            {
-              "name": "eventId",
-              "description": "The unique identifier of the calendar event."
-            }
-          ]
-        }
+      "description": "Stores calendar events for each family."
+    },
+    "/families/{familyName}/tasks/{taskId}": {
+      "schema": {
+        "$ref": "#/entities/Task"
       },
-      {
-        "path": "/families/{familyName}/tasks/{taskId}",
-        "definition": {
-          "entityName": "Task",
-          "schema": {
-            "$ref": "#/backend/entities/Task"
-          },
-          "description": "Stores tasks for each family. Includes denormalized 'familyName' for authorization independence.",
-          "params": [
-            {
-              "name": "familyName",
-              "description": "The name of the family."
-            },
-            {
-              "name": "taskId",
-              "description": "The unique identifier of the task."
-            }
-          ]
-        }
+      "description": "Stores tasks for each family."
+    },
+    "/families/{familyName}/shoppingListItems/{shoppingListItemId}": {
+      "schema": {
+        "$ref": "#/entities/ShoppingListItem"
       },
-      {
-        "path": "/families/{familyName}/shoppingListItems/{shoppingListItemId}",
-        "definition": {
-          "entityName": "ShoppingListItem",
-          "schema": {
-            "$ref": "#/backend/entities/ShoppingListItem"
-          },
-          "description": "Stores shopping list items for each family. Includes denormalized 'familyName' for authorization independence.",
-          "params": [
-            {
-              "name": "familyName",
-              "description": "The name of the family."
-            },
-            {
-              "name": "shoppingListItemId",
-              "description": "The unique identifier of the shopping list item."
-            }
-          ]
-        }
+      "description": "Stores shopping list items for each family."
+    },
+    "/families/{familyName}/dogPlan/{dogPlanItemId}": {
+        "schema": {
+            "$ref": "#/entities/DogPlanItem"
+        },
+        "description": "Stores dog plan items for each family."
+    },
+    "/families/{familyName}/locations/{locationId}": {
+        "schema": {
+            "$ref": "#/entities/Location"
+        },
+        "description": "Stores reusable locations for a family."
+    },
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/User"
       },
-      {
-        "path": "/users/{userId}/privateEvents/{eventId}",
-        "definition": {
-          "entityName": "CalendarEvent",
-          "schema": {
-            "$ref": "#/backend/entities/CalendarEvent"
-          },
-          "description": "Stores private calendar events for each user.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user."
-            },
-            {
-              "name": "eventId",
-              "description": "The unique identifier of the calendar event."
-            }
-          ]
-        }
-      }
-    ],
-    "reasoning": "The Firestore structure is designed to support a family calendar application with shared and individual calendars, tasks, and shopping lists. Authorization Independence is achieved through denormalization. Each calendar event, task, and shopping list item stores the family name, allowing security rules to validate access based on the user's family affiliation without needing to perform expensive `get()` operations to retrieve family information from parent documents. The structure facilitates QAPs (Rules are not Filters) through structural segregation, where shared family data and individual user data are stored in separate collections, allowing for efficient and secure `list` operations based on family membership or user ID."
+      "description": "Stores user profiles."
+    }
   }
 }

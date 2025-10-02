@@ -9,33 +9,55 @@ import CalendarView from './calendar-view';
 import TaskList from './task-list';
 import ShoppingList from './shopping-list';
 import DogPlan from './dog-plan';
-import { calendarGroups, initialEvents, initialFamilyMembers, initialShoppingListItems, initialTasks, initialDogPlanItems } from '@/lib/data';
+import { calendarGroups, initialFamilyMembers, initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems } from '@/lib/data';
 import type { CalendarGroup, Event, Task, ShoppingListItem, FamilyMember, DogPlanItem } from '@/lib/types';
+import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, doc } from 'firebase/firestore';
 
 export default function Dashboard() {
   const [selectedCalendarId, setSelectedCalendarId] = useState('all');
 
+  const { firestore, user } = useFirebase();
+
+  // This is a placeholder for the actual family name which would come from the user's profile
+  const familyName = 'Familie-Butz-Braun'; 
+
+  const eventsRef = useMemoFirebase(() => firestore ? collection(firestore, `families/${familyName}/events`) : null, [firestore, familyName]);
+  const tasksRef = useMemoFirebase(() => firestore ? collection(firestore, `families/${familyName}/tasks`) : null, [firestore, familyName]);
+  const shoppingListRef = useMemoFirebase(() => firestore ? collection(firestore, `families/${familyName}/shoppingListItems`) : null, [firestore, familyName]);
+  const dogPlanRef = useMemoFirebase(() => firestore ? collection(firestore, `families/${familyName}/dogPlan`) : null, [firestore, familyName]);
+  
+  const { data: eventsData, isLoading: eventsLoading } = useCollection<Event>(eventsRef);
+  const { data: tasksData, isLoading: tasksLoading } = useCollection<Task>(tasksRef);
+  const { data: shoppingListData, isLoading: shoppingLoading } = useCollection<ShoppingListItem>(shoppingListRef);
+  const { data: dogPlanData, isLoading: dogPlanLoading } = useCollection<DogPlanItem>(dogPlanRef);
+
+
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>(initialFamilyMembers);
-  const [localEvents, setLocalEvents] = useState<Event[]>(initialEvents);
-  const [localTasks, setLocalTasks] = useState<Task[]>(initialTasks);
-  const [localShoppingItems, setLocalShoppingItems] = useState<ShoppingListItem[]>(initialShoppingListItems);
-  const [localDogPlanItems, setLocalDogPlanItems] = useState<DogPlanItem[]>(initialDogPlanItems);
+  const [localEvents, setLocalEvents] = useState<Event[]>(eventsData || initialEvents);
+  const [localTasks, setLocalTasks] = useState<Task[]>(tasksData || initialTasks);
+  const [localShoppingItems, setLocalShoppingItems] = useState<ShoppingListItem[]>(shoppingListData || initialShoppingListItems);
+  const [localDogPlanItems, setLocalDogPlanItems] = useState<DogPlanItem[]>(dogPlanData || initialDogPlanItems);
+
+  React.useEffect(() => {
+    if (eventsData) setLocalEvents(eventsData.map(e => ({...e, start: (e.start as any).toDate(), end: (e.end as any).toDate() })));
+  }, [eventsData]);
+
+  React.useEffect(() => {
+    if (tasksData) setLocalTasks(tasksData.map(t => ({...t, dueDate: (t.dueDate as any).toDate()})))
+  }, [tasksData]);
+
+  React.useEffect(() => {
+    if (shoppingListData) setLocalShoppingItems(shoppingListData);
+  }, [shoppingListData]);
+
+  React.useEffect(() => {
+    if (dogPlanData) setLocalDogPlanItems(dogPlanData);
+  }, [dogPlanData]);
+
 
   const handleAddEvent = (newEvent: Omit<Event, 'id' | 'calendarId'>) => {
-    let calendarIdForEvent: string;
-
-    if (selectedCalendarId === 'all' || selectedCalendarId === 'my_calendar') {
-        calendarIdForEvent = 'c_all';
-    } else {
-        calendarIdForEvent = selectedCalendarId;
-    }
-
-    const newEventWithId: Event = {
-      ...newEvent,
-      id: `e${Date.now()}`,
-      calendarId: calendarIdForEvent,
-    };
-    setLocalEvents(prev => [...prev, newEventWithId]);
+    // This will be replaced with firebase logic
   };
   
   const handleUpdateProfile = (updatedMember: FamilyMember) => {
@@ -54,24 +76,23 @@ export default function Dashboard() {
   }, [selectedCalendarId, familyMembers]);
 
   const filteredData = useMemo(() => {
+     // For now, filtering logic remains the same, but it will be adapted for Firestore queries
+    const events = eventsData?.map(e => ({ ...e, start: (e.start as any).toDate(), end: (e.end as any).toDate() })) || [];
+    const tasks = tasksData?.map(t => ({ ...t, dueDate: (t.dueDate as any).toDate() })) || [];
+    const shoppingItems = shoppingListData || [];
+    const dogPlanItems = dogPlanData || [];
+
     if (selectedCalendarId === 'all') {
-        const allEvents = localEvents;
-        return {
-            events: allEvents,
-            tasks: localTasks,
-            shoppingItems: localShoppingItems,
-            dogPlanItems: localDogPlanItems,
-            members: familyMembers
-        };
+        return { events, tasks, shoppingItems, dogPlanItems, members: familyMembers };
     }
+    
+    const meId = 'me'; // assuming 'me' is the current user's id
 
     if (selectedCalendarId === 'my_calendar') {
-        const meId = 'me';
-        // Show events where I am a participant, or events from my personal calendar (if such a concept is formally introduced)
-        const myEvents = localEvents.filter(event => event.participants.includes(meId));
-        const myTasks = localTasks.filter(task => task.assignedTo === meId);
-        const myShoppingItems = localShoppingItems.filter(item => item.addedBy === meId);
-        const myDogPlanItems = localDogPlanItems.filter(item => item.assignedTo === meId);
+        const myEvents = events.filter(event => event.participants.includes(meId));
+        const myTasks = tasks.filter(task => task.assignedTo === meId);
+        const myShoppingItems = shoppingItems.filter(item => item.addedBy === meId);
+        const myDogPlanItems = dogPlanItems.filter(item => item.assignedTo === meId);
         const meMember = familyMembers.find(m => m.id === meId);
 
         return {
@@ -84,26 +105,21 @@ export default function Dashboard() {
     }
 
     const memberIdsInGroup = new Set(currentGroup?.members);
-
-    // For a specific family group, show only events for that calendarId
-    const filteredEvents = localEvents.filter(event => event.calendarId === selectedCalendarId);
-    const filteredTasks = localTasks.filter(task => task.calendarId === selectedCalendarId);
-    const filteredShoppingItems = localShoppingItems.filter(item => item.calendarId === selectedCalendarId);
-    const filteredDogPlanItems = localDogPlanItems.filter(item => {
-        if (!item.assignedTo) return false; // Unassigned items are not shown in specific group calendars
-        return memberIdsInGroup.has(item.assignedTo);
-    });
-
+    
+    const groupEvents = events.filter(event => event.participants.some(p => memberIdsInGroup.has(p)));
+    const groupTasks = tasks.filter(task => memberIdsInGroup.has(task.assignedTo));
+    const groupShoppingItems = shoppingItems.filter(item => memberIdsInGroup.has(item.addedBy));
+    const groupDogPlanItems = dogPlanItems.filter(item => item.assignedTo && memberIdsInGroup.has(item.assignedTo));
     const membersInGroup = familyMembers.filter(m => memberIdsInGroup.has(m.id));
 
     return {
-      events: filteredEvents,
-      tasks: filteredTasks,
-      shoppingItems: filteredShoppingItems,
-      dogPlanItems: filteredDogPlanItems,
+      events: groupEvents,
+      tasks: groupTasks,
+      shoppingItems: groupShoppingItems,
+      dogPlanItems: groupDogPlanItems,
       members: membersInGroup
     };
-  }, [selectedCalendarId, currentGroup, localEvents, localTasks, localShoppingItems, localDogPlanItems, familyMembers]);
+  }, [selectedCalendarId, currentGroup, eventsData, tasksData, shoppingListData, dogPlanData, familyMembers]);
 
 
   return (

@@ -1,4 +1,5 @@
 import type { PlaceHolderImages } from "./placeholder-images";
+import { Timestamp } from "firebase/firestore";
 
 export type FamilyMember = {
   id: string;
@@ -12,26 +13,32 @@ export type CalendarGroup = {
   members: FamilyMember['id'][];
 };
 
+export type Location = {
+    id: string;
+    street: string;
+    housenumber: string;
+    postalcode: string;
+    city: string;
+}
+
 export type Event = {
   id: string;
   title: string;
-  start: Date;
-  end: Date;
+  start: Timestamp | Date; // Allow both for local and Firestore data
+  end: Timestamp | Date;
   allDay?: boolean;
   location?: string;
   description?: string;
   participants: FamilyMember['id'][];
-  calendarId: CalendarGroup['id'];
 };
 
 export type Task = {
   id: string;
   title: string;
   assignedTo: FamilyMember['id'];
-  dueDate: Date;
+  dueDate: Timestamp | Date;
   priority: 'low' | 'medium' | 'high';
   completed: boolean;
-  calendarId: CalendarGroup['id'];
 };
 
 export type ShoppingListItem = {
@@ -39,7 +46,6 @@ export type ShoppingListItem = {
   name: string;
   addedBy: FamilyMember['id'];
   purchased: boolean;
-  calendarId: CalendarGroup['id'];
 };
 
 export type DogPlanItem = {
@@ -47,5 +53,4 @@ export type DogPlanItem = {
   day: 'Montag' | 'Dienstag' | 'Mittwoch' | 'Donnerstag' | 'Freitag' | 'Samstag' | 'Sonntag';
   timeOfDay: 'Morgen' | 'Mittag' | 'Abend';
   assignedTo: FamilyMember['id'];
-  calendarId: CalendarGroup['id'];
 };

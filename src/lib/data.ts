@@ -1,5 +1,6 @@
 import { PlaceHolderImages } from './placeholder-images';
 import type { FamilyMember, CalendarGroup, Event, Task, ShoppingListItem, DogPlanItem } from './types';
+import { Timestamp } from 'firebase/firestore';
 
 const findImage = (id: string) => {
     const image = PlaceHolderImages.find(img => img.id === id);
@@ -29,8 +30,7 @@ const tomorrow = new Date(today);
 tomorrow.setDate(tomorrow.getDate() + 1);
 const nextWeek = new Date(today);
 nextWeek.setDate(nextWeek.getDate() + 7);
-const twoDaysAgo = new Date(today);
-twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+
 
 export const initialEvents: Event[] = [
   {
@@ -40,7 +40,6 @@ export const initialEvents: Event[] = [
     end: new Date(new Date(today).setHours(18, 30, 0, 0)),
     location: 'Sportplatz',
     participants: ['sister'],
-    calendarId: 'c_immediate',
   },
   {
     id: 'e2',
@@ -49,7 +48,6 @@ export const initialEvents: Event[] = [
     end: new Date(new Date(tomorrow).setHours(10, 30, 0, 0)),
     location: 'Dr. Smile',
     participants: ['me'],
-    calendarId: 'c_immediate',
   },
   {
     id: 'e3',
@@ -57,7 +55,6 @@ export const initialEvents: Event[] = [
     start: new Date(new Date(tomorrow).setHours(15, 0, 0, 0)),
     end: new Date(new Date(tomorrow).setHours(17, 0, 0, 0)),
     participants: ['grandma', 'grandpa'],
-    calendarId: 'c_grandparents',
   },
    {
     id: 'e4',
@@ -66,32 +63,31 @@ export const initialEvents: Event[] = [
     end: new Date(new Date(nextWeek).setHours(20, 0, 0, 0)),
     location: 'Schule',
     participants: ['dad', 'mom'],
-    calendarId: 'c_immediate',
   },
 ];
 
 export const initialTasks: Task[] = [
-    { id: 't1', title: 'Müll rausbringen', assignedTo: 'sister', dueDate: today, priority: 'medium', completed: false, calendarId: 'c_immediate' },
-    { id: 't2', title: 'Geschenk für Oma kaufen', assignedTo: 'me', dueDate: tomorrow, priority: 'high', completed: false, calendarId: 'c_immediate' },
-    { id: 't3', title: 'Auto zur Werkstatt bringen', assignedTo: 'dad', dueDate: nextWeek, priority: 'medium', completed: false, calendarId: 'c_immediate' },
-    { id: 't4', title: 'Blumen gießen', assignedTo: 'grandma', dueDate: today, priority: 'low', completed: true, calendarId: 'c_grandparents' },
+    { id: 't1', title: 'Müll rausbringen', assignedTo: 'sister', dueDate: today, priority: 'medium', completed: false },
+    { id: 't2', title: 'Geschenk für Oma kaufen', assignedTo: 'me', dueDate: tomorrow, priority: 'high', completed: false },
+    { id: 't3', title: 'Auto zur Werkstatt bringen', assignedTo: 'dad', dueDate: nextWeek, priority: 'medium', completed: false },
+    { id: 't4', title: 'Blumen gießen', assignedTo: 'grandma', dueDate: today, priority: 'low', completed: true },
 ];
 
 export const initialShoppingListItems: ShoppingListItem[] = [
-    { id: 's1', name: 'Milch', addedBy: 'mom', purchased: false, calendarId: 'c_immediate' },
-    { id: 's2', name: 'Brot', addedBy: 'mom', purchased: true, calendarId: 'c_immediate' },
-    { id: 's3', name: 'Eier', addedBy: 'dad', purchased: false, calendarId: 'c_immediate' },
-    { id: 's4', name: 'Butter', addedBy: 'me', purchased: false, calendarId: 'c_immediate' },
-    { id: 's5', name: 'Kaffee', addedBy: 'grandpa', purchased: false, calendarId: 'c_grandparents' },
+    { id: 's1', name: 'Milch', addedBy: 'mom', purchased: false },
+    { id: 's2', name: 'Brot', addedBy: 'mom', purchased: true },
+    { id: 's3', name: 'Eier', addedBy: 'dad', purchased: false },
+    { id: 's4', name: 'Butter', addedBy: 'me', purchased: false },
+    { id: 's5', name: 'Kaffee', addedBy: 'grandpa', purchased: false },
 ];
 
 export const initialDogPlanItems: DogPlanItem[] = [
-    { id: 'd_mo_m', day: 'Montag', timeOfDay: 'Morgen', assignedTo: 'dad', calendarId: 'c_immediate' },
-    { id: 'd_mo_a', day: 'Montag', timeOfDay: 'Abend', assignedTo: 'mom', calendarId: 'c_immediate' },
-    { id: 'd_di_m', day: 'Dienstag', timeOfDay: 'Morgen', assignedTo: 'dad', calendarId: 'c_immediate' },
-    { id: 'd_di_a', day: 'Dienstag', timeOfDay: 'Abend', assignedTo: 'mom', calendarId: 'c_immediate' },
-    { id: 'd_mi_m', day: 'Mittwoch', timeOfDay: 'Morgen', assignedTo: 'sister', calendarId: 'c_immediate' },
-    { id: 'd_mi_a', day: 'Mittwoch', timeOfDay: 'Abend', assignedTo: 'me', calendarId: 'c_immediate' },
+    { id: 'd_mo_m', day: 'Montag', timeOfDay: 'Morgen', assignedTo: 'dad' },
+    { id: 'd_mo_a', day: 'Montag', timeOfDay: 'Abend', assignedTo: 'mom' },
+    { id: 'd_di_m', day: 'Dienstag', timeOfDay: 'Morgen', assignedTo: 'dad' },
+    { id: 'd_di_a', day: 'Dienstag', timeOfDay: 'Abend', assignedTo: 'mom' },
+    { id: 'd_mi_m', day: 'Mittwoch', timeOfDay: 'Morgen', assignedTo: 'sister' },
+    { id: 'd_mi_a', day: 'Mittwoch', timeOfDay: 'Abend', assignedTo: 'me' },
 ];
 
 
