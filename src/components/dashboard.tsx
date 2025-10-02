@@ -4,12 +4,13 @@ import React, { useState, useMemo } from 'react';
 import AppSidebar from './layout/app-sidebar';
 import AppHeader from './layout/app-header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar, ListTodo, ShoppingCart } from 'lucide-react';
+import { Calendar, ListTodo, ShoppingCart, Dog } from 'lucide-react';
 import CalendarView from './calendar-view';
 import TaskList from './task-list';
 import ShoppingList from './shopping-list';
-import { calendarGroups, events, familyMembers, shoppingListItems, tasks } from '@/lib/data';
-import type { CalendarGroup, Event, Task, ShoppingListItem, FamilyMember } from '@/lib/types';
+import DogPlan from './dog-plan';
+import { calendarGroups, events, familyMembers, shoppingListItems, tasks, dogPlanItems } from '@/lib/data';
+import type { CalendarGroup, Event, Task, ShoppingListItem, FamilyMember, DogPlanItem } from '@/lib/types';
 
 export default function Dashboard() {
   const [selectedCalendarId, setSelectedCalendarId] = useState('all');
@@ -17,6 +18,7 @@ export default function Dashboard() {
   const [localEvents, setLocalEvents] = useState<Event[]>(events);
   const [localTasks, setLocalTasks] = useState<Task[]>(tasks);
   const [localShoppingItems, setLocalShoppingItems] = useState<ShoppingListItem[]>(shoppingListItems);
+  const [localDogPlanItems, setLocalDogPlanItems] = useState<DogPlanItem[]>(dogPlanItems);
 
   const handleAddEvent = (newEvent: Omit<Event, 'id' | 'calendarId'>) => {
     const newEventWithId: Event = {
@@ -48,6 +50,10 @@ export default function Dashboard() {
     const filteredShoppingItems = localShoppingItems.filter(item =>
       selectedCalendarId === 'all' || item.calendarId === selectedCalendarId
     );
+    
+    const filteredDogPlanItems = localDogPlanItems.filter(item =>
+      selectedCalendarId === 'all' || item.calendarId === selectedCalendarId
+    );
 
     const membersInGroup = familyMembers.filter(m => memberIdsInGroup.has(m.id));
 
@@ -55,9 +61,10 @@ export default function Dashboard() {
       events: filteredEvents,
       tasks: filteredTasks,
       shoppingItems: filteredShoppingItems,
+      dogPlanItems: filteredDogPlanItems,
       members: membersInGroup
     };
-  }, [selectedCalendarId, currentGroup, localEvents, localTasks, localShoppingItems]);
+  }, [selectedCalendarId, currentGroup, localEvents, localTasks, localShoppingItems, localDogPlanItems]);
 
   return (
     <div className="flex h-screen w-full bg-background font-body text-foreground">
@@ -74,7 +81,7 @@ export default function Dashboard() {
         />
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           <Tabs defaultValue="calendar" className="h-full">
-            <TabsList className="grid w-full grid-cols-3 md:w-auto md:inline-grid md:grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4 md:w-auto md:inline-grid md:grid-cols-4">
               <TabsTrigger value="calendar">
                 <Calendar className="mr-2 h-4 w-4" />
                 Kalender
@@ -87,6 +94,10 @@ export default function Dashboard() {
                 <ShoppingCart className="mr-2 h-4 w-4" />
                 Einkaufsliste
               </TabsTrigger>
+              <TabsTrigger value="dog-plan">
+                <Dog className="mr-2 h-4 w-4" />
+                Hundeplan
+              </TabsTrigger>
             </TabsList>
             <TabsContent value="calendar" className="mt-4 rounded-lg">
               <CalendarView events={filteredData.events} />
@@ -96,6 +107,9 @@ export default function Dashboard() {
             </TabsContent>
             <TabsContent value="shopping" className="mt-4">
               <ShoppingList items={filteredData.shoppingItems} members={familyMembers} />
+            </TabsContent>
+            <TabsContent value="dog-plan" className="mt-4">
+              <DogPlan items={filteredData.dogPlanItems} members={familyMembers} />
             </TabsContent>
           </Tabs>
         </main>

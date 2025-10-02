@@ -40,3 +40,12 @@ export type ShoppingListItem = {
   purchased: boolean;
   calendarId: CalendarGroup['id'];
 };
+
+export type DogPlanItem = {
+  id: string;
+  title: string;
+  time: string;
+  assignedTo: FamilyMember['id'];
+  completed: boolean;
+  calendarId: CalendarGroup['id'];
+};

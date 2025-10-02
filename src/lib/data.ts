@@ -1,5 +1,5 @@
 import { PlaceHolderImages } from './placeholder-images';
-import type { FamilyMember, CalendarGroup, Event, Task, ShoppingListItem } from './types';
+import type { FamilyMember, CalendarGroup, Event, Task, ShoppingListItem, DogPlanItem } from './types';
 
 const findImage = (id: string) => {
     const image = PlaceHolderImages.find(img => img.id === id);
@@ -84,6 +84,14 @@ export const shoppingListItems: ShoppingListItem[] = [
     { id: 's4', name: 'Butter', addedBy: 'me', purchased: false, calendarId: 'c_immediate' },
     { id: 's5', name: 'Kaffee', addedBy: 'grandpa', purchased: false, calendarId: 'c_grandparents' },
 ];
+
+export const dogPlanItems: DogPlanItem[] = [
+    { id: 'd1', title: 'Morgens füttern', time: '07:00', assignedTo: 'dad', completed: true, calendarId: 'c_immediate' },
+    { id: 'd2', title: 'Morgens Gassi gehen', time: '07:30', assignedTo: 'dad', completed: true, calendarId: 'c_immediate' },
+    { id: 'd3', title: 'Abends füttern', time: '18:00', assignedTo: 'mom', completed: false, calendarId: 'c_immediate' },
+    { id: 'd4', title: 'Abends Gassi gehen', time: '18:30', assignedTo: 'mom', completed: false, calendarId: 'c_immediate' },
+];
+
 
 // Mock iCal data for AI suggestions
 export const familyICalData: Record<string, string[]> = {
