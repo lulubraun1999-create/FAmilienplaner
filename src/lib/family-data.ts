@@ -20,19 +20,11 @@ export const familyData = [
         ]
     },
     {
-        id: 'Familie-Froehle',
-        name: 'Familie Fröhle',
-        code: 'Froehle2024',
+        id: 'Familie-Weiss-Froehle',
+        name: 'Familie Weiß/Fröhle',
+        code: 'WF2024', // I've created a new simple code, you can change it if you want.
         members: [
-            // Add members of Familie Fröhle here
-        ]
-    },
-    {
-        id: 'Familie-Weiss',
-        name: 'Familie Weiß',
-        code: 'Weiss2024',
-        members: [
-            // Add members of Familie Weiß here
+            // Add members of Familie Weiß/Fröhle here
         ]
     },
 ];
