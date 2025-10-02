@@ -55,8 +55,13 @@ export default function Dashboard() {
             .filter(snap => snap.exists())
             .map(snap => ({ id: snap.id, ...snap.data() } as FamilyMember));
           setFamilyMembers(members);
-        } catch (e) {
-          console.error("Error fetching family members' profiles", e);
+        } catch (e: any) {
+            console.error("Error fetching family members' profiles", e);
+            const permissionError = new FirestorePermissionError({
+              path: 'users',
+              operation: 'list',
+            });
+            errorEmitter.emit('permission-error', permissionError);
         }
       }
     };
