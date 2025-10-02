@@ -12,11 +12,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select';
+import { errorEmitter, FirestorePermissionError } from '@/firebase';
 
 interface DogPlanProps {
   items: DogPlanItem[];
   members: FamilyMember[];
-  onUpdateItem: (item: DogPlanItem) => void;
+  onUpdateItem: (item: DogPlanItem, isNew: boolean) => void;
 }
 
 type Weekday = 'Montag' | 'Dienstag' | 'Mittwoch' | 'Donnerstag' | 'Freitag' | 'Samstag' | 'Sonntag';
@@ -37,17 +38,15 @@ export default function DogPlan({ items, members, onUpdateItem }: DogPlanProps) 
     const existingItem = items.find(item => item.day === weekday && item.timeOfDay === timeOfDay);
 
     if (existingItem) {
-      onUpdateItem({ ...existingItem, assignedTo: effectiveMemberId });
+      onUpdateItem({ ...existingItem, assignedTo: effectiveMemberId }, false);
     } else {
-      // This is a new item creation, ensure it has a unique ID.
-      // A more robust solution might generate this ID on the backend.
       const newItem: DogPlanItem = {
-        id: `d_${weekday}_${timeOfDay}_${new Date().getTime()}`,
+        id: `d_${weekday}_${timeOfDay}_${new Date().getTime()}`, // Temporary ID
         day: weekday,
         timeOfDay: timeOfDay,
         assignedTo: effectiveMemberId,
       };
-      onUpdateItem(newItem);
+      onUpdateItem(newItem, true);
     }
   };
 

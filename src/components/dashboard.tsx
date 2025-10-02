@@ -31,17 +31,13 @@ export default function Dashboard() {
   const { data: userData } = useDoc<FamilyMember>(userDocRef);
   const familyName = userData?.familyName;
   
-  const familyMembers = useMemo(() => {
-    if (user) {
-        const currentUserInList = initialFamilyMembers.find(m => m.email === user.email);
-        if(currentUserInList) {
-            currentUserInList.id = user.uid;
-            return initialFamilyMembers;
-        }
-        return [{ id: user.uid, name: user.displayName || 'Benutzer', email: user.email || '', avatar: {} }];
-    }
-    return [];
-  }, [user]);
+  const { data: familyMembers, isLoading: familyMembersLoading } = useCollection<FamilyMember>(
+      useMemoFirebase(() => 
+          (firestore && familyName) 
+          ? query(collection(firestore, 'users'), where('familyName', '==', familyName)) 
+          : null,
+      [firestore, familyName])
+  );
 
 
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
@@ -74,12 +70,23 @@ export default function Dashboard() {
     if (firestore && user && familyName && !eventsLoading && !isDataPopulated && eventsData?.length === 0) {
       const populateFirestore = async () => {
         const populateRef = doc(firestore, `families/${familyName}/meta`, 'populated');
-        const populateSnap = await getDoc(populateRef);
+        
+        try {
+            const populateSnap = await getDoc(populateRef);
 
-        if (populateSnap.exists() || familyName !== 'Familie-Butz-Braun') {
-            setIsDataPopulated(true);
+            if (populateSnap.exists() || familyName !== 'Familie-Butz-Braun') {
+                setIsDataPopulated(true);
+                return;
+            }
+        } catch (e) {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: populateRef.path,
+                operation: 'get',
+            }));
+            setIsDataPopulated(true); // Prevent re-running
             return;
         }
+
 
         const batch = writeBatch(firestore);
 
@@ -334,6 +341,11 @@ export default function Dashboard() {
                         }));
                     });
                 }
+            }).catch(e => {
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                    path: dogPlanRef.path,
+                    operation: 'list',
+                }));
             });
         } else if (item.id) {
             const itemDocRef = doc(dogPlanRef, item.id);
