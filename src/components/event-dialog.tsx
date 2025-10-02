@@ -17,13 +17,13 @@ import { Calendar } from './ui/calendar';
 import { CalendarIcon, Clock, Sparkles, Loader2, Users, FileText, MapPin, Trash2 } from 'lucide-react';
 import { format, set, startOfDay, endOfDay, differenceInMinutes, isAfter } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
+import { cn, getInitials } from '@/lib/utils';
 import type { FamilyMember, Event, CalendarGroup, Location } from '@/lib/types';
 import { getAISuggestions } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Textarea } from './ui/textarea';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { Avatar, AvatarFallback } from './ui/avatar';
 import { Checkbox } from './ui/checkbox';
 import { Separator } from './ui/separator';
 import LocationDialog from './location-dialog';
@@ -326,8 +326,7 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event
                             onCheckedChange={() => toggleParticipant(p.id)}
                           />
                            <Avatar className="h-6 w-6">
-                            <AvatarImage src={p.avatar.imageUrl} alt={p.name} data-ai-hint={p.avatar.imageHint}/>
-                            <AvatarFallback>{p.name.charAt(0)}</AvatarFallback>
+                            <AvatarFallback>{getInitials(p.name)}</AvatarFallback>
                           </Avatar>
                           <span>{p.name}</span>
                         </Label>

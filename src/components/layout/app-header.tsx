@@ -1,12 +1,13 @@
 'use client';
 
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Plus, RefreshCw, Moon, Sun } from 'lucide-react';
 import type { FamilyMember, Location } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useTheme } from 'next-themes';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { getInitials } from '@/lib/utils';
 
 interface AppHeaderProps {
   groupName: string;
@@ -35,8 +36,7 @@ export default function AppHeader({ groupName, groupMembers, onAddEvent }: AppHe
           <div className="mt-1 flex items-center -space-x-2">
             {groupMembers.map((member) => (
               <Avatar key={member.id} className="h-6 w-6 border-2 border-card">
-                <AvatarImage src={member.avatar.imageUrl} alt={member.name} data-ai-hint={member.avatar.imageHint} />
-                <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
+                <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
               </Avatar>
             ))}
           </div>

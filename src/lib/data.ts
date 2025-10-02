@@ -1,22 +1,15 @@
-import { PlaceHolderImages } from './placeholder-images';
 import type { FamilyMember, CalendarGroup, Event, Task, ShoppingListItem, DogPlanItem, Location } from './types';
 import { Timestamp } from 'firebase/firestore';
 
-const findImage = (id: string) => {
-    const image = PlaceHolderImages.find(img => img.id === id);
-    if (!image) throw new Error(`Image with id ${id} not found`);
-    return image;
-}
-
 export const initialFamilyMembers: FamilyMember[] = [
-  { id: 'dad', name: 'Matthias Butz', avatar: findImage('puppy1') },
-  { id: 'mom', name: 'Katrin Butz', avatar: findImage('puppy2') },
-  { id: 'sister', name: 'Lena Butz', avatar: findImage('puppy3') },
-  { id: 'me', name: 'Lukas Braun', avatar: findImage('puppy4') },
-  { id: 'grandma', name: 'Editha Fröhle', avatar: findImage('puppy5') },
-  { id: 'grandpa', name: 'Rolf Fröhle', avatar: findImage('puppy6') },
-  { id: 'aunt', name: 'Sandra Fröhle', avatar: findImage('puppy7') },
-  { id: 'uncle', name: 'Markus Weiß', avatar: findImage('puppy8') },
+  { id: 'dad', name: 'Matthias Butz', avatar: {} },
+  { id: 'mom', name: 'Katrin Butz', avatar: {} },
+  { id: 'sister', name: 'Lena Butz', avatar: {} },
+  { id: 'me', name: 'Lukas Braun', avatar: {} },
+  { id: 'grandma', name: 'Editha Fröhle', avatar: {} },
+  { id: 'grandpa', name: 'Rolf Fröhle', avatar: {} },
+  { id: 'aunt', name: 'Sandra Fröhle', avatar: {} },
+  { id: 'uncle', name: 'Markus Weiß', avatar: {} },
 ];
 
 export const calendarGroups: CalendarGroup[] = [

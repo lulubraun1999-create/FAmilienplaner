@@ -17,11 +17,11 @@ import { Calendar } from './ui/calendar';
 import { CalendarIcon, Eye, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
+import { cn, getInitials } from '@/lib/utils';
 import type { FamilyMember, Task } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Textarea } from './ui/textarea';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { Avatar, AvatarFallback } from './ui/avatar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 
@@ -154,8 +154,7 @@ export default function TaskDialog({ isOpen, setIsOpen, onSave, onDelete, task, 
                   <SelectItem key={member.id} value={member.id}>
                     <div className="flex items-center gap-2">
                       <Avatar className="h-6 w-6">
-                        <AvatarImage src={member.avatar.imageUrl} alt={member.name} data-ai-hint={member.avatar.imageHint} />
-                        <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
+                        <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
                       </Avatar>
                       <span>{member.name}</span>
                     </div>

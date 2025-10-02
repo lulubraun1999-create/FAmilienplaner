@@ -4,8 +4,9 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { CalendarDays, Users, User, LogOut } from 'lucide-react';
 import type { CalendarGroup, FamilyMember } from '@/lib/types';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import ProfileDialog from '../profile-dialog';
+import { getInitials } from '@/lib/utils';
 
 interface AppSidebarProps {
   calendarGroups: CalendarGroup[];
@@ -77,8 +78,7 @@ export default function AppSidebar({ calendarGroups, selectedCalendarId, onCalen
           <button className="flex w-full items-center gap-3 rounded-lg p-2 transition-colors hover:bg-secondary" onClick={() => setIsProfileDialogOpen(true)}>
               {me && (
                   <Avatar className="h-10 w-10">
-                      <AvatarImage src={me.avatar.imageUrl} alt={me.name} data-ai-hint={me.avatar.imageHint} />
-                      <AvatarFallback>{me.name.charAt(0)}</AvatarFallback>
+                      <AvatarFallback>{getInitials(me.name)}</AvatarFallback>
                   </Avatar>
               )}
               <div className="flex-1 text-left">

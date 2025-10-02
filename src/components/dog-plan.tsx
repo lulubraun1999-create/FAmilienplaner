@@ -2,9 +2,9 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { Avatar, AvatarFallback } from './ui/avatar';
 import type { DogPlanItem, FamilyMember } from '@/lib/types';
-import { cn } from '@/lib/utils';
+import { cn, getInitials } from '@/lib/utils';
 import {
   Select,
   SelectContent,
@@ -87,8 +87,7 @@ export default function DogPlan({ items, members, onUpdateItem }: DogPlanProps) 
                                     {member ? (
                                         <div className='flex items-center gap-2'>
                                             <Avatar className="h-6 w-6">
-                                                <AvatarImage src={member.avatar.imageUrl} alt={member.name} data-ai-hint={member.avatar.imageHint} />
-                                                <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
+                                                <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
                                             </Avatar>
                                             <span>{member.name}</span>
                                         </div>
@@ -101,8 +100,7 @@ export default function DogPlan({ items, members, onUpdateItem }: DogPlanProps) 
                                     <SelectItem key={m.id} value={m.id}>
                                         <div className='flex items-center gap-2'>
                                              <Avatar className="h-6 w-6">
-                                                <AvatarImage src={m.avatar.imageUrl} alt={m.name} data-ai-hint={m.avatar.imageHint} />
-                                                <AvatarFallback>{m.name.charAt(0)}</AvatarFallback>
+                                                <AvatarFallback>{getInitials(m.name)}</AvatarFallback>
                                             </Avatar>
                                             <span>{m.name}</span>
                                         </div>

@@ -3,11 +3,11 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Checkbox } from './ui/checkbox';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { Avatar, AvatarFallback } from './ui/avatar';
 import type { Task, FamilyMember } from '@/lib/types';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
+import { cn, getInitials } from '@/lib/utils';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Plus } from 'lucide-react';
@@ -77,8 +77,7 @@ export default function TaskList({ tasks, members, onTaskClick, onNewTaskClick }
                     </Badge>
                     {member && (
                         <Avatar className="h-8 w-8">
-                            <AvatarImage src={member.avatar.imageUrl} alt={member.name} data-ai-hint={member.avatar.imageHint} />
-                            <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
+                            <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
                         </Avatar>
                     )}
                 </div>

@@ -12,10 +12,9 @@ import {
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { ScrollArea } from './ui/scroll-area';
-import { PlaceHolderImages, type ImagePlaceholder } from '@/lib/placeholder-images';
+import { Avatar, AvatarFallback } from './ui/avatar';
 import type { FamilyMember } from '@/lib/types';
+import { getInitials } from '@/lib/utils';
 
 interface ProfileDialogProps {
   isOpen: boolean;
@@ -26,12 +25,10 @@ interface ProfileDialogProps {
 
 export default function ProfileDialog({ isOpen, setIsOpen, onSave, member }: ProfileDialogProps) {
   const [name, setName] = useState(member.name);
-  const [selectedAvatar, setSelectedAvatar] = useState<ImagePlaceholder>(member.avatar);
 
   useEffect(() => {
     if (isOpen) {
       setName(member.name);
-      setSelectedAvatar(member.avatar);
     }
   }, [isOpen, member]);
 
@@ -39,7 +36,6 @@ export default function ProfileDialog({ isOpen, setIsOpen, onSave, member }: Pro
     onSave({
       ...member,
       name,
-      avatar: selectedAvatar,
     });
     setIsOpen(false);
   };
@@ -50,7 +46,7 @@ export default function ProfileDialog({ isOpen, setIsOpen, onSave, member }: Pro
         <DialogHeader>
           <DialogTitle>Profil bearbeiten</DialogTitle>
           <DialogDescription>
-            Ändere deinen Namen und wähle einen neuen Avatar.
+            Ändere deinen Namen. Dein Avatar wird aus deinen Initialen generiert.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -68,28 +64,12 @@ export default function ProfileDialog({ isOpen, setIsOpen, onSave, member }: Pro
           <div className="grid grid-cols-4 items-start gap-4">
             <Label className="text-right pt-2">Avatar</Label>
             <div className="col-span-3">
-              <div className="flex items-center gap-4 mb-4">
+              <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16">
-                  <AvatarImage src={selectedAvatar.imageUrl} alt={name} data-ai-hint={selectedAvatar.imageHint} />
-                  <AvatarFallback>{name.charAt(0)}</AvatarFallback>
+                  <AvatarFallback className="text-2xl">{getInitials(name)}</AvatarFallback>
                 </Avatar>
-                <p className="text-sm text-muted-foreground">Wähle ein Bild aus der Liste unten aus.</p>
+                <p className="text-sm text-muted-foreground">Dein Avatar wird automatisch aus den Initialen deines Namens erstellt.</p>
               </div>
-              <ScrollArea className="h-48 rounded-md border">
-                <div className="p-4 grid grid-cols-4 gap-4">
-                  {PlaceHolderImages.map((image) => (
-                    <button
-                      key={image.id}
-                      onClick={() => setSelectedAvatar(image)}
-                      className={`rounded-full transition-all ${selectedAvatar.id === image.id ? 'ring-2 ring-primary ring-offset-2' : ''}`}
-                    >
-                      <Avatar className="h-12 w-12">
-                        <AvatarImage src={image.imageUrl} alt={image.description} data-ai-hint={image.imageHint} />
-                      </Avatar>
-                    </button>
-                  ))}
-                </div>
-              </ScrollArea>
             </div>
           </div>
         </div>

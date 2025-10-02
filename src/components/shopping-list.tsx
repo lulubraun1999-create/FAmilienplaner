@@ -3,9 +3,9 @@
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Checkbox } from './ui/checkbox';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { Avatar, AvatarFallback } from './ui/avatar';
 import type { ShoppingListItem, FamilyMember } from '@/lib/types';
-import { cn } from '@/lib/utils';
+import { cn, getInitials } from '@/lib/utils';
 import { Button } from './ui/button';
 import { Plus, Trash2, Hand, User as UserIcon, Users } from 'lucide-react';
 import { Input } from './ui/input';
@@ -76,8 +76,7 @@ export default function ShoppingList({ items, members, onAddItem, onUpdateItem, 
                 <span>Hinzugefügt von:</span>
                 {member && (
                     <Avatar className="h-4 w-4">
-                        <AvatarImage src={member.avatar.imageUrl} alt={member.name} data-ai-hint={member.avatar.imageHint} />
-                        <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
+                        <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
                     </Avatar>
                 )}
               </div>
@@ -87,8 +86,7 @@ export default function ShoppingList({ items, members, onAddItem, onUpdateItem, 
                  <div className='flex items-center gap-2 text-sm text-muted-foreground'>
                     <span className='hidden sm:inline'>Gekauft von</span>
                      <Avatar className="h-6 w-6">
-                        <AvatarImage src={assignedMember.avatar.imageUrl} alt={assignedMember.name} data-ai-hint={assignedMember.avatar.imageHint} />
-                        <AvatarFallback>{assignedMember.name.charAt(0)}</AvatarFallback>
+                        <AvatarFallback>{getInitials(assignedMember.name)}</AvatarFallback>
                     </Avatar>
                  </div>
                )}
@@ -154,8 +152,7 @@ export default function ShoppingList({ items, members, onAddItem, onUpdateItem, 
                             {members.filter(m => m.id !== currentUserId).map(member => (
                                 <DropdownMenuItem key={member.id} onClick={() => handleAddNewItem(member.id)}>
                                      <Avatar className="h-6 w-6 mr-2">
-                                        <AvatarImage src={member.avatar.imageUrl} alt={member.name} data-ai-hint={member.avatar.imageHint}/>
-                                        <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
+                                        <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
                                     </Avatar>
                                     <span>{member.name}</span>
                                 </DropdownMenuItem>

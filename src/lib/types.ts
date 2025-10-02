@@ -1,10 +1,12 @@
-import type { PlaceHolderImages } from "./placeholder-images";
 import { Timestamp } from "firebase/firestore";
 
 export type FamilyMember = {
   id: string;
   name: string;
-  avatar: (typeof PlaceHolderImages)[number];
+  avatar: { // Kept for now to avoid breaking too many things, but image is gone.
+    imageHint?: string;
+    imageUrl?: string;
+  };
 };
 
 export type CalendarGroup = {
