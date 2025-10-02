@@ -25,6 +25,7 @@ type TimeOfDay = 'Morgen' | 'Mittag' | 'Abend';
 
 const weekdays: Weekday[] = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
 const timesOfDay: TimeOfDay[] = ['Morgen', 'Mittag', 'Abend'];
+const UNASSIGNED_VALUE = 'unassigned';
 
 export default function DogPlan({ items, members }: DogPlanProps) {
   const [localItems, setLocalItems] = useState(items);
@@ -35,18 +36,19 @@ export default function DogPlan({ items, members }: DogPlanProps) {
   };
   
   const handleAssignmentChange = (weekday: Weekday, timeOfDay: TimeOfDay, memberId: string) => {
+    const effectiveMemberId = memberId === UNASSIGNED_VALUE ? '' : memberId;
     setLocalItems(prevItems => {
         const newItems = [...prevItems];
         const itemIndex = newItems.findIndex(item => item.day === weekday && item.timeOfDay === timeOfDay);
 
         if (itemIndex > -1) {
-            newItems[itemIndex] = { ...newItems[itemIndex], assignedTo: memberId };
+            newItems[itemIndex] = { ...newItems[itemIndex], assignedTo: effectiveMemberId };
         } else {
             newItems.push({
                 id: `d_${weekday}_${timeOfDay}`,
                 day: weekday,
                 timeOfDay: timeOfDay,
-                assignedTo: memberId,
+                assignedTo: effectiveMemberId,
                 calendarId: 'c_immediate' // Assuming a default
             });
         }
@@ -84,11 +86,11 @@ export default function DogPlan({ items, members }: DogPlanProps) {
                     return (
                       <td key={`${day}-${time}`} className="p-2 min-w-[150px]">
                         <Select
-                            value={member?.id || ''}
+                            value={member?.id || UNASSIGNED_VALUE}
                             onValueChange={(memberId) => handleAssignmentChange(day, time, memberId)}
                         >
                             <SelectTrigger className={cn(!member && "text-muted-foreground")}>
-                                <SelectValue>
+                                <SelectValue placeholder="Nicht zugewiesen">
                                     {member ? (
                                         <div className='flex items-center gap-2'>
                                             <Avatar className="h-6 w-6">
@@ -101,7 +103,7 @@ export default function DogPlan({ items, members }: DogPlanProps) {
                                 </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">Nicht zugewiesen</SelectItem>
+                                <SelectItem value={UNASSIGNED_VALUE}>Nicht zugewiesen</SelectItem>
                                 {members.map(m => (
                                     <SelectItem key={m.id} value={m.id}>
                                         <div className='flex items-center gap-2'>
