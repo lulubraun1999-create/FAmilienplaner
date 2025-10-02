@@ -35,8 +35,8 @@ export type Location = {
 export type Event = {
   id: string;
   title: string;
-  start: Timestamp | Date;
-  end: Timestamp | Date;
+  start: Timestamp | Date | string;
+  end: Timestamp | Date | string;
   allDay?: boolean;
   locationId?: string;
   description?: string;

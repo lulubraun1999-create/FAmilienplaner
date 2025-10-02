@@ -2,6 +2,8 @@
 
 import { suggestOptimalEventTimes, type SuggestOptimalEventTimesInput, type SuggestOptimalEventTimesOutput } from '@/ai/flows/suggest-optimal-event-times';
 import { familyICalData } from '@/lib/data';
+import type { Event } from '@/lib/types';
+import ical from 'ical-generator';
 
 export async function getAISuggestions(
     duration: number,
@@ -27,7 +29,7 @@ export async function getAISuggestions(
         const result = await suggestOptimalEventTimes(input);
         
         if (!result.suggestedEventTimes || result.suggestedEventTimes.length === 0) {
-          return { success: false, error: 'AI could not suggest any time slots.' };
+          return { success: false; error: 'AI could not suggest any time slots.' };
         }
 
         return { success: true, suggestions: result.suggestedEventTimes };
@@ -35,4 +37,20 @@ export async function getAISuggestions(
         console.error('Error getting AI suggestions:', error);
         return { success: false, error: 'Failed to get AI suggestions.' };
     }
+}
+
+export async function exportCalendar(events: Event[], familyName: string): Promise<string> {
+    const calendar = ical({ name: `Familienkalender: ${familyName}` });
+
+    events.forEach(event => {
+        calendar.createEvent({
+            start: new Date(event.start.toString()),
+            end: new Date(event.end.toString()),
+            summary: event.title,
+            description: event.description,
+            allDay: event.allDay,
+        });
+    });
+
+    return calendar.toString();
 }

@@ -2,28 +2,61 @@
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Plus, RefreshCw, Moon, Sun } from 'lucide-react';
-import type { FamilyMember, Location } from '@/lib/types';
+import { Plus, RefreshCw, Moon, Sun, Download } from 'lucide-react';
+import type { FamilyMember, Event } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useTheme } from 'next-themes';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { getInitials } from '@/lib/utils';
+import { exportCalendar } from '@/app/actions';
+import { useState } from 'react';
 
 interface AppHeaderProps {
   groupName: string;
   groupMembers: FamilyMember[];
   onAddEvent: () => void;
+  eventsToSync: Event[];
 }
 
-export default function AppHeader({ groupName, groupMembers, onAddEvent }: AppHeaderProps) {
+export default function AppHeader({ groupName, groupMembers, onAddEvent, eventsToSync }: AppHeaderProps) {
   const { toast } = useToast();
   const { setTheme } = useTheme();
+  const [isSyncing, setIsSyncing] = useState(false);
 
-  const handleSync = () => {
+  const handleSync = async () => {
+    setIsSyncing(true);
     toast({
-      title: 'Synchronisierung gestartet',
-      description: 'Deine Kalender werden jetzt synchronisiert.',
+      title: 'Kalender wird exportiert...',
+      description: 'Deine Termine werden in eine .ics-Datei umgewandelt.',
     });
+    try {
+      const icalData = await exportCalendar(eventsToSync, groupName);
+      
+      const blob = new Blob([icalData], { type: 'text/calendar' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `familienkalender_${groupName.toLowerCase().replace(/ /g, '_')}.ics`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: 'Export erfolgreich!',
+        description: 'Die Kalender-Datei wurde heruntergeladen.',
+      });
+
+    } catch (error) {
+      console.error("Failed to export calendar", error);
+      toast({
+        title: 'Export fehlgeschlagen',
+        description: 'Beim Erstellen der Kalender-Datei ist ein Fehler aufgetreten.',
+        variant: 'destructive',
+      });
+    } finally {
+        setIsSyncing(false);
+    }
   };
 
   return (
@@ -40,9 +73,9 @@ export default function AppHeader({ groupName, groupMembers, onAddEvent }: AppHe
           </div>
         </div>
         <div className="flex items-center gap-2">
-           <Button variant="ghost" size="icon" onClick={handleSync}>
-            <RefreshCw className="h-5 w-5" />
-            <span className="sr-only">Synchronisieren</span>
+           <Button variant="ghost" size="icon" onClick={handleSync} disabled={isSyncing}>
+            {isSyncing ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Download className="h-5 w-5" />}
+            <span className="sr-only">Kalender exportieren</span>
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

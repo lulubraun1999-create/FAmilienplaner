@@ -10,7 +10,7 @@ import TaskList from './task-list';
 import ShoppingList from './shopping-list';
 import DogPlan from './dog-plan';
 import { initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems, initialLocations, calendarGroups, initialFamilyMembers } from '@/lib/data';
-import type { CalendarGroup, Event, Task, ShoppingListItem, FamilyMember, DogPlanItem, Location, Family } from '@/lib/types';
+import type { CalendarGroup, Event, Task, ShoppingListItem, FamilyMember, DogPlanItem, Location } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser, useDoc, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch, setDoc, getDocs, query, where, getDoc } from 'firebase/firestore';
 import EventDialog from './event-dialog';
@@ -30,6 +30,7 @@ export default function Dashboard() {
   const { data: userData } = useDoc<FamilyMember>(userDocRef);
   const familyName = userData?.familyName;
 
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>(initialFamilyMembers);
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | undefined>(undefined);
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
@@ -40,10 +41,6 @@ export default function Dashboard() {
   const [calendarView, setCalendarView] = useState<CalendarViewType>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
   
-  // Temporarily use static family members to fix permission issues
-  const familyMembers = useMemo(() => initialFamilyMembers, []);
-
-
   const familyBasedRef = (collectionName: string) => useMemoFirebase(() => (firestore && familyName ? collection(firestore, `families/${familyName}/${collectionName}`) : null), [firestore, familyName]);
 
   const eventsRef = familyBasedRef('events');
@@ -339,6 +336,7 @@ export default function Dashboard() {
             groupName={currentGroup?.name || 'Familienplaner'}
             groupMembers={filteredData.members}
             onAddEvent={() => handleOpenEventDialog()}
+            eventsToSync={filteredData.events}
           />
           <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
             <Tabs defaultValue="calendar" className="h-full">
