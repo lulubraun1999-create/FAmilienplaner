@@ -256,7 +256,16 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamil
                 <MapPin className="h-4 w-4" />
                 Ort
               </Label>
-              <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} className="col-span-3" placeholder="Ort hinzufügen" />
+              <div className="col-span-3 space-y-2">
+                <div className="grid grid-cols-3 gap-2">
+                  <Input id="street" placeholder="Straße" className="col-span-2" />
+                  <Input id="housenumber" placeholder="Nr." />
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <Input id="postalcode" placeholder="PLZ" />
+                  <Input id="city" placeholder="Stadt" className="col-span-2" />
+                </div>
+              </div>
             </div>
 
           <div className="grid grid-cols-4 items-start gap-4">
