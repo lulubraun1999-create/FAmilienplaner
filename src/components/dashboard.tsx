@@ -12,7 +12,7 @@ import DogPlan from './dog-plan';
 import { initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems, initialLocations, initialFamilyMembers } from '@/lib/data';
 import type { CalendarGroup, Event, Task, ShoppingListItem, FamilyMember, DogPlanItem, Location } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser, useDoc } from '@/firebase';
-import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch, setDoc, getDoc } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch, setDoc } from 'firebase/firestore';
 import { errorEmitter, FirestorePermissionError } from '@/firebase';
 import EventDialog from './event-dialog';
 import { Button } from './ui/button';
@@ -31,7 +31,6 @@ export default function Dashboard() {
   const { data: userData } = useDoc<FamilyMember>(userDocRef);
   const familyName = userData?.familyName;
   
-  // Replaced dynamic query with static data to fix permission issues.
   const familyMembers = useMemo(() => initialFamilyMembers, []);
 
 
@@ -63,26 +62,9 @@ export default function Dashboard() {
 
     useEffect(() => {
     if (firestore && user && familyName && !eventsLoading && !isDataPopulated && eventsData?.length === 0) {
+      setIsDataPopulated(true); // Prevent this from running multiple times
+      
       const populateFirestore = async () => {
-        const populateRef = doc(firestore, `families/${familyName}/meta`, 'populated');
-        
-        try {
-            const populateSnap = await getDoc(populateRef);
-
-            if (populateSnap.exists()) {
-                setIsDataPopulated(true);
-                return;
-            }
-        } catch (e) {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: populateRef.path,
-                operation: 'get',
-            }));
-            setIsDataPopulated(true); // Prevent re-running
-            return;
-        }
-
-
         const batch = writeBatch(firestore);
 
         initialEvents.forEach(event => {
@@ -110,8 +92,6 @@ export default function Dashboard() {
             batch.set(locationRef, location);
         });
 
-        batch.set(populateRef, { populatedBy: user.uid, populatedAt: new Date() });
-
         try {
             await batch.commit();
         } catch(e) {
@@ -121,7 +101,6 @@ export default function Dashboard() {
                 requestResourceData: {note: 'Batch write for initial data population'}
             }));
         }
-        setIsDataPopulated(true);
       };
 
       populateFirestore();
@@ -129,7 +108,6 @@ export default function Dashboard() {
   }, [firestore, user, familyName, eventsLoading, isDataPopulated, eventsData]);
 
   const me = useMemo(() => {
-    // When using static data, we find "me" by a known ID.
     return familyMembers?.find(m => m.id === 'me');
   }, [familyMembers]);
 
