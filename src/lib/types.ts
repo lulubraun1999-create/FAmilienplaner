@@ -40,6 +40,12 @@ export type EventParticipant = {
   status: ParticipantStatus;
 }
 
+export type RecurrenceRule = {
+    frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
+    interval: number;
+    endDate?: Timestamp | Date | string;
+};
+
 export type Event = {
   id: string;
   title: string;
@@ -50,6 +56,7 @@ export type Event = {
   description?: string;
   participants: EventParticipant[];
   createdBy: string;
+  recurrenceRule?: RecurrenceRule;
 };
 
 export type Task = {

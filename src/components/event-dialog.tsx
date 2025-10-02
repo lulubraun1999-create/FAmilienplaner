@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useTransition, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -14,11 +14,11 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Calendar } from './ui/calendar';
-import { CalendarIcon, Clock, Sparkles, Loader2, Users, FileText, MapPin, Trash2, CheckCircle, XCircle, HelpCircle } from 'lucide-react';
-import { format, set, startOfDay, endOfDay, differenceInMinutes, isAfter } from 'date-fns';
+import { CalendarIcon, Clock, Users, FileText, MapPin, Trash2, CheckCircle, XCircle, HelpCircle, Repeat } from 'lucide-react';
+import { format, set, startOfDay, endOfDay, isAfter } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn, getInitials } from '@/lib/utils';
-import type { FamilyMember, Event, CalendarGroup, Location, EventParticipant, ParticipantStatus } from '@/lib/types';
+import type { FamilyMember, Event, CalendarGroup, Location, EventParticipant, ParticipantStatus, RecurrenceRule } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Textarea } from './ui/textarea';
@@ -55,6 +55,16 @@ const statusColors: Record<ParticipantStatus, string> = {
     pending: 'text-yellow-500'
 };
 
+const recurrenceOptions = [
+    { value: 'none', label: 'Keine Wiederholung' },
+    { value: 'daily_1', label: 'Täglich' },
+    { value: 'weekly_1', label: 'Wöchentlich (am selben Wochentag)' },
+    { value: 'weekly_2', label: 'Alle 2 Wochen' },
+    { value: 'monthly_1', label: 'Monatlich (am selben Tag)' },
+    { value: 'monthly_3', label: 'Alle 3 Monate' },
+    { value: 'yearly_1', label: 'Jährlich (am selben Datum)' },
+]
+
 export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event, allFamilyMembers, calendarGroups, locations, onAddLocation, onDeleteLocation, me }: EventDialogProps) {
   const [title, setTitle] = useState('');
   const [startDate, setStartDate] = useState<Date | undefined>(new Date());
@@ -65,6 +75,8 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event
   const [locationId, setLocationId] = useState('');
   const [description, setDescription] = useState('');
   const [participants, setParticipants] = useState<EventParticipant[]>([]);
+  const [recurrence, setRecurrence] = useState('none');
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState<Date | undefined>();
   
   const { toast } = useToast();
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
@@ -82,6 +94,8 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event
       setLocationId('');
       setDescription('');
       setParticipants(me ? [{ userId: me.id, status: 'accepted' }] : []);
+      setRecurrence('none');
+      setRecurrenceEndDate(undefined);
   }
 
   useEffect(() => {
@@ -98,6 +112,14 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event
         setLocationId(event.locationId || '');
         setDescription(event.description || '');
         setParticipants(event.participants ? [...event.participants] : []);
+        if (event.recurrenceRule) {
+            const { frequency, interval } = event.recurrenceRule;
+            setRecurrence(`${frequency}_${interval}`);
+            setRecurrenceEndDate(event.recurrenceRule.endDate ? new Date(event.recurrenceRule.endDate.toString()) : undefined);
+        } else {
+            setRecurrence('none');
+            setRecurrenceEndDate(undefined);
+        }
       } else {
         resetForm();
         if(event?.start) {
@@ -134,6 +156,16 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event
         }
     }
 
+    let recurrenceRule: RecurrenceRule | undefined = undefined;
+    if (recurrence !== 'none') {
+        const [frequency, intervalStr] = recurrence.split('_');
+        recurrenceRule = {
+            frequency: frequency as RecurrenceRule['frequency'],
+            interval: parseInt(intervalStr, 10),
+            endDate: recurrenceEndDate ? endOfDay(recurrenceEndDate) : undefined,
+        }
+    }
+
     const eventData = {
       title,
       start: startDateTime,
@@ -142,7 +174,8 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event
       description,
       participants,
       allDay: isAllDay,
-      createdBy: event?.createdBy || me?.id || ''
+      createdBy: event?.createdBy || me?.id || '',
+      recurrenceRule,
     };
 
     if (event?.id) {
@@ -289,6 +322,38 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event
                     </label>
                   </div>
               </div>
+              
+            <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="recurrence" className="text-right flex items-center gap-2 justify-end">
+                    <Repeat className="h-4 w-4" />
+                    Wiederholung
+                </Label>
+                <div className="col-span-3 grid grid-cols-2 gap-2">
+                    <Select value={recurrence} onValueChange={setRecurrence}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Wiederholung auswählen" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {recurrenceOptions.map(opt => (
+                                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    {recurrence !== 'none' && (
+                         <Popover>
+                            <PopoverTrigger asChild>
+                            <Button variant={"outline"} className={cn("justify-start text-left font-normal", !recurrenceEndDate && "text-muted-foreground")}>
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {recurrenceEndDate ? `Bis ${format(recurrenceEndDate, 'PPP', { locale: de })}` : <span>Enddatum (Optional)</span>}
+                            </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                            <Calendar mode="single" selected={recurrenceEndDate} onSelect={setRecurrenceEndDate} disabled={{ before: endDate }} initialFocus />
+                            </PopoverContent>
+                        </Popover>
+                    )}
+                </div>
+            </div>
 
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="location" className="text-right flex items-center gap-2 justify-end">

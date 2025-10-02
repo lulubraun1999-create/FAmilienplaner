@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import AppSidebar from './layout/app-sidebar';
 import AppHeader from './layout/app-header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -22,6 +22,8 @@ import TaskDialog from './task-dialog';
 import { familyData, allFamilyMembers } from '@/lib/family-data';
 import { updateProfile } from 'firebase/auth';
 import MobileSidebar from './layout/mobile-sidebar';
+import { add as addDate, differenceInMilliseconds } from 'date-fns';
+import { toDate } from 'date-fns-tz';
 
 type CalendarViewType = 'month' | 'week' | 'day';
 
@@ -127,10 +129,52 @@ export default function Dashboard() {
     }));
   }, []);
   
+const generateRecurringEvents = useCallback((baseEvents: Event[]): Event[] => {
+    const allEvents: Event[] = [];
+
+    baseEvents.forEach(event => {
+        allEvents.push(event); // Add the original event
+
+        if (event.recurrenceRule) {
+            const { frequency, interval, endDate } = event.recurrenceRule;
+            const originalStart = toDate(event.start.toString(), { timeZone: 'Europe/Berlin' });
+            const originalEnd = toDate(event.end.toString(), { timeZone: 'Europe/Berlin' });
+            const duration = differenceInMilliseconds(originalEnd, originalStart);
+
+            let currentStart = addDate(originalStart, {
+                daily: { days: interval },
+                weekly: { weeks: interval },
+                monthly: { months: interval },
+                yearly: { years: interval },
+            }[frequency]);
+
+            while (currentStart <= (endDate ? toDate(endDate.toString()) : addDate(new Date(), { years: 1 }))) {
+                const newEnd = addDate(currentStart, { milliseconds: duration });
+                allEvents.push({
+                    ...event,
+                    id: `${event.id}-${currentStart.toISOString()}`, // Create a unique ID for the occurrence
+                    start: currentStart,
+                    end: newEnd,
+                    recurrenceRule: undefined, // Mark this as an occurrence, not a base event
+                });
+                 currentStart = addDate(currentStart, {
+                    daily: { days: interval },
+                    weekly: { weeks: interval },
+                    monthly: { months: interval },
+                    yearly: { years: interval },
+                }[frequency]);
+            }
+        }
+    });
+
+    return allEvents;
+}, []);
+
   const localEvents = useMemo(() => {
     if (!eventsData) return [];
-    return eventsData.map(e => ({...e, start: (e.start as any).toDate(), end: (e.end as any).toDate() }));
-  }, [eventsData]);
+    const baseEvents = eventsData.map(e => ({...e, start: (e.start as any).toDate(), end: (e.end as any).toDate() }));
+    return generateRecurringEvents(baseEvents);
+  }, [eventsData, generateRecurringEvents]);
 
   const localTasks = useMemo(() => {
     if (!tasksData) return [];

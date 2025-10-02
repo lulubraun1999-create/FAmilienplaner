@@ -30,6 +30,25 @@
         "familyName"
       ]
     },
+    "RecurrenceRule": {
+      "title": "RecurrenceRule",
+      "type": "object",
+      "description": "Defines a recurrence rule for an event.",
+      "properties": {
+        "frequency": {
+          "type": "string",
+          "enum": ["daily", "weekly", "monthly", "yearly"]
+        },
+        "interval": {
+          "type": "number"
+        },
+        "endDate": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["frequency", "interval"]
+    },
     "CalendarEvent": {
       "title": "CalendarEvent",
       "type": "object",
@@ -82,6 +101,9 @@
         "createdBy": {
           "type": "string",
           "description": "Reference to User. The user who created the event."
+        },
+        "recurrenceRule": {
+          "$ref": "#/entities/RecurrenceRule"
         }
       },
       "required": [
