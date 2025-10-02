@@ -30,7 +30,7 @@ export default function AppSidebar({ calendarGroups, selectedCalendarId, onCalen
               onClick={() => onCalendarChange('all')}
               className={cn(
                 'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-secondary',
-                selectedCalendarId === 'all' && 'bg-secondary text-primary-foreground'
+                selectedCalendarId === 'all' && 'bg-secondary'
               )}
             >
               <Users className="h-4 w-4" />
