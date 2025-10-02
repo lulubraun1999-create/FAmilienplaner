@@ -65,7 +65,7 @@ export default function Dashboard() {
   const { data: eventsData, isLoading: eventsLoading } = useCollection<Event>(eventsRef);
   const { data: tasksData, isLoading: tasksLoading } = useCollection<Task>(tasksRef);
   const { data: shoppingListData, isLoading: shoppingLoading } = useCollection<ShoppingListItem>(shoppingListRef);
-  const { data: dogPlanData, isLoading: dogPlanLoading } = useCollection<DogPlanItem>(dogPlanRef);
+  const { data: dogPlanData, isLoading: dogPlanLoading }-  = useCollection<DogPlanItem>(dogPlanRef);
   const { data: locationsData, isLoading: locationsLoading } = useCollection<Location>(locationsRef);
     
 
@@ -152,8 +152,8 @@ export default function Dashboard() {
             title: '',
             participants: [{ userId: me.id, status: 'accepted' }],
             allDay: false,
-            start: new Date(),
-            end: new Date(new Date().getTime() + 60 * 60 * 1000), 
+            start: currentDate,
+            end: new Date(currentDate.getTime() + 60 * 60 * 1000), 
             createdBy: me.id,
         };
         setSelectedEvent(newEventTemplate as Event);
@@ -375,6 +375,11 @@ export default function Dashboard() {
      }
   };
 
+  const handleDayClick = (day: Date) => {
+    setCurrentDate(day);
+    setCalendarView('day');
+  };
+
   const currentGroup = useMemo(() => {
     if (selectedCalendarId === 'all') {
       return { id: 'all', name: 'Gesamte Familie', members: familyMembers.map(m => m.id) };
@@ -487,10 +492,7 @@ export default function Dashboard() {
                         onEventClick={handleOpenEventDialog}
                         currentDate={currentDate}
                         setCurrentDate={setCurrentDate}
-                        onDayClick={(day) => {
-                            setCurrentDate(day);
-                            setCalendarView('day');
-                        }}
+                        onDayClick={handleDayClick}
                     />
                  )}
                  {calendarView === 'week' && (
@@ -501,10 +503,7 @@ export default function Dashboard() {
                         onEventClick={handleOpenEventDialog}
                         currentDate={currentDate}
                         setCurrentDate={setCurrentDate}
-                         onDayClick={(day) => {
-                            setCurrentDate(day);
-                            setCalendarView('day');
-                        }}
+                        onDayClick={handleDayClick}
                     />
                  )}
                   {calendarView === 'day' && (

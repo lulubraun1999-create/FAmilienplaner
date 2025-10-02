@@ -72,11 +72,12 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event
 
   const resetForm = () => {
       setTitle('');
-      const today = new Date();
+      const today = event?.start ? new Date(event.start.toString()) : new Date();
       setStartDate(today);
       setEndDate(today);
-      setStartTime('10:00');
-      setEndTime('11:00');
+      setStartTime(format(today, 'HH:mm'));
+      const oneHourLater = new Date(today.getTime() + 60 * 60 * 1000);
+      setEndTime(format(oneHourLater, 'HH:mm'));
       setIsAllDay(false);
       setLocationId('');
       setDescription('');
@@ -85,18 +86,28 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event
 
   useEffect(() => {
     if (isOpen) {
-      if (event) {
+      if (event && event.title) { // Check if it's a real event, not a template for a new one
         setTitle(event.title);
-        setStartDate(event.start ? new Date(event.start.toString()) : new Date());
-        setEndDate(event.end ? new Date(event.end.toString()) : new Date());
-        setStartTime(format(new Date(event.start.toString()), 'HH:mm'));
-        setEndTime(format(new Date(event.end.toString()), 'HH:mm'));
+        const eventStart = new Date(event.start.toString());
+        const eventEnd = new Date(event.end.toString());
+        setStartDate(eventStart);
+        setEndDate(eventEnd);
+        setStartTime(format(eventStart, 'HH:mm'));
+        setEndTime(format(eventEnd, 'HH:mm'));
         setIsAllDay(event.allDay || false);
         setLocationId(event.locationId || '');
         setDescription(event.description || '');
         setParticipants(event.participants ? [...event.participants] : []);
       } else {
         resetForm();
+        if(event?.start) {
+            const start = new Date(event.start.toString());
+            const end = event.end ? new Date(event.end.toString()) : new Date(start.getTime() + 60 * 60 * 1000);
+            setStartDate(start);
+            setEndDate(end);
+            setStartTime(format(start, 'HH:mm'));
+            setEndTime(format(end, 'HH:mm'));
+        }
       }
     }
   }, [event, isOpen, me]);
@@ -211,7 +222,7 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="sm:max-w-[625px]">
           <DialogHeader>
-            <DialogTitle>{event ? 'Ereignis bearbeiten' : 'Neues Ereignis erstellen'}</DialogTitle>
+            <DialogTitle>{event && event.title ? 'Ereignis bearbeiten' : 'Neues Ereignis erstellen'}</DialogTitle>
             <DialogDescription>
               Fülle die Details für dein Ereignis aus. Klicke auf Speichern, wenn du fertig bist.
             </DialogDescription>
@@ -388,7 +399,7 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event
           </div>
           <DialogFooter className='justify-between'>
             <div>
-            {event && event.createdBy === me?.id && (
+            {event && event.id && event.createdBy === me?.id && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" type="button">

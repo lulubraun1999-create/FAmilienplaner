@@ -39,20 +39,19 @@ export default function DayView({ events, locations, familyMembers, onEventClick
   };
   
   const dayStart = startOfDay(currentDate);
-  const dayEnd = endOfDay(currentDate);
 
   const dayEventsRaw = events.filter(event => 
-      isWithinInterval(currentDate, { 
-          start: startOfDay(new Date(event.start.toString())), 
-          end: endOfDay(new Date(event.end.toString())) 
-      })
+    isWithinInterval(currentDate, { 
+        start: startOfDay(new Date(event.start.toString())), 
+        end: endOfDay(new Date(event.end.toString())) 
+    })
   );
 
   const allDayEvents = dayEventsRaw.filter(event => {
-      const eventStart = new Date(event.start);
-      const eventEnd = new Date(event.end);
-      // It's an all-day event if the flag is set OR if it spans more than one day and this is a middle day
-      return event.allDay || (!isSameDay(eventStart, dayStart) && !isSameDay(eventEnd, dayStart));
+    const eventStart = new Date(event.start);
+    const eventEnd = new Date(event.end);
+    // It's an all-day event if the flag is set OR if it spans more than one day and this is a middle day
+    return event.allDay || (!isSameDay(eventStart, dayStart) && !isSameDay(eventEnd, dayStart));
   });
 
   const timedEvents = dayEventsRaw
