@@ -22,7 +22,7 @@ export const familyData = [
     {
         id: 'Familie-Weiss-Froehle',
         name: 'Familie Weiß/Fröhle',
-        code: 'WF2024',
+        code: 'Rolf1784',
         members: [
             // Add members of Familie Weiß/Fröhle here
         ]
@@ -30,7 +30,7 @@ export const familyData = [
     {
         id: 'Familie-Froehle',
         name: 'Familie Fröhle',
-        code: 'F2024', // A new simple code, you can change it if you want.
+        code: 'Rolf1784',
         members: [
             // Add members of Familie Fröhle here
         ]
