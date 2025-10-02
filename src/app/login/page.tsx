@@ -12,11 +12,15 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { CalendarDays, Loader2 } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-
-// IMPORTANT: This should be stored securely, e.g., in Firebase Remote Config or a secure backend.
-// For this prototype, we'll hardcode it, but this is NOT for production.
-const FAMILY_REGISTRATION_CODE = 'Rolf1784';
+// Data for families and their registration codes.
+// In a real production app, this would likely come from a database.
+const families = [
+    { id: 'Familie-Butz-Braun', name: 'Familie Butz/Braun', code: 'Rolf1784' },
+    { id: 'Familie-Froehle', name: 'Familie Fröhle', code: 'Froehle2024' },
+    { id: 'Familie-Weiss', name: 'Familie Weiß', code: 'Weiss2024' },
+];
 
 export default function LoginPage() {
   const [loginEmail, setLoginEmail] = useState('');
@@ -25,6 +29,7 @@ export default function LoginPage() {
   const [registerPassword, setRegisterPassword] = useState('');
   const [registerName, setRegisterName] = useState('');
   const [registrationCode, setRegistrationCode] = useState('');
+  const [selectedFamilyId, setSelectedFamilyId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
 
   const { firestore } = useFirebase();
@@ -52,10 +57,21 @@ export default function LoginPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (registrationCode !== FAMILY_REGISTRATION_CODE) {
+    const selectedFamily = families.find(f => f.id === selectedFamilyId);
+
+    if (!selectedFamily) {
+        toast({
+            title: 'Keine Familie ausgewählt',
+            description: 'Bitte wähle eine Familie aus der Liste aus.',
+            variant: 'destructive',
+        });
+        return;
+    }
+
+    if (registrationCode !== selectedFamily.code) {
         toast({
             title: 'Falscher Registrierungscode',
-            description: 'Der eingegebene Code ist nicht korrekt. Bitte frage nach dem richtigen Code.',
+            description: 'Der eingegebene Code ist für die ausgewählte Familie nicht korrekt.',
             variant: 'destructive',
         });
         return;
@@ -76,7 +92,7 @@ export default function LoginPage() {
             id: user.uid,
             name: registerName,
             email: registerEmail,
-            familyName: 'Familie-Butz-Braun' // Hardcoded family name
+            familyName: selectedFamily.id
         });
       }
       
@@ -152,7 +168,7 @@ export default function LoginPage() {
           <Card>
             <CardHeader>
               <CardTitle>Registrieren</CardTitle>
-              <CardDescription>Erstelle ein neues Konto für deine Familie. Du benötigst dazu den Familien-Code.</CardDescription>
+              <CardDescription>Tritt einer Familie bei. Du benötigst dazu den Familien-Code.</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleRegister} className="space-y-4">
@@ -189,6 +205,19 @@ export default function LoginPage() {
                     onChange={(e) => setRegisterPassword(e.target.value)}
                     disabled={isLoading}
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="register-family">Familie</Label>
+                    <Select value={selectedFamilyId} onValueChange={setSelectedFamilyId} disabled={isLoading}>
+                        <SelectTrigger id="register-family">
+                            <SelectValue placeholder="Wähle deine Familie" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {families.map(family => (
+                                <SelectItem key={family.id} value={family.id}>{family.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="register-code">Registrierungscode</Label>
