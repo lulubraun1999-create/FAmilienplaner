@@ -99,7 +99,11 @@ export default function Dashboard() {
 
   const localTasks = useMemo(() => {
     if (!tasksData) return [];
-    return tasksData.map(t => ({...t, dueDate: (t.dueDate as any).toDate()}));
+    const currentUserId = 'me';
+    return tasksData
+      .map(t => ({...t, dueDate: (t.dueDate as any).toDate()}))
+      .filter(t => t.visibility === 'public' || (t.visibility === 'private' && (t.assignedTo === currentUserId)));
+
   }, [tasksData]);
   
   const localShoppingItems = useMemo(() => shoppingListData || [], [shoppingListData]);

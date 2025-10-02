@@ -104,6 +104,11 @@
         "completed": {
           "type": "boolean",
           "description": "Indicates whether the task is completed."
+        },
+        "visibility": {
+          "type": "string",
+          "description": "Determines who can see the task.",
+          "enum": ["public", "private"]
         }
       },
       "required": [
@@ -111,7 +116,8 @@
         "dueDate",
         "priority",
         "assignedTo",
-        "completed"
+        "completed",
+        "visibility"
       ]
     },
     "ShoppingListItem": {
@@ -214,5 +220,3 @@
     }
   }
 }
-
-    

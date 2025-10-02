@@ -14,7 +14,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Calendar } from './ui/calendar';
-import { CalendarIcon, User, Trash2 } from 'lucide-react';
+import { CalendarIcon, Eye, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Textarea } from './ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
+import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 
 interface TaskDialogProps {
   isOpen: boolean;
@@ -39,6 +40,7 @@ export default function TaskDialog({ isOpen, setIsOpen, onSave, onDelete, task, 
   const [dueDate, setDueDate] = useState<Date | undefined>(new Date());
   const [assignedTo, setAssignedTo] = useState<string>('');
   const [priority, setPriority] = useState<Task['priority']>('medium');
+  const [visibility, setVisibility] = useState<Task['visibility']>('public');
 
   const resetForm = () => {
     setTitle('');
@@ -46,6 +48,7 @@ export default function TaskDialog({ isOpen, setIsOpen, onSave, onDelete, task, 
     setDueDate(new Date());
     setAssignedTo('');
     setPriority('medium');
+    setVisibility('public');
   };
 
   useEffect(() => {
@@ -56,6 +59,7 @@ export default function TaskDialog({ isOpen, setIsOpen, onSave, onDelete, task, 
         setDueDate(task.dueDate ? new Date(task.dueDate.toString()) : new Date());
         setAssignedTo(task.assignedTo);
         setPriority(task.priority);
+        setVisibility(task.visibility || 'public');
       } else {
         resetForm();
       }
@@ -72,6 +76,7 @@ export default function TaskDialog({ isOpen, setIsOpen, onSave, onDelete, task, 
       assignedTo,
       priority,
       completed: task?.completed || false,
+      visibility,
     };
 
     if (task?.id) {
@@ -159,6 +164,24 @@ export default function TaskDialog({ isOpen, setIsOpen, onSave, onDelete, task, 
               </SelectContent>
             </Select>
           </div>
+
+          <div className="grid grid-cols-4 items-start gap-4">
+            <Label className="text-right pt-2 flex items-center gap-2 justify-end">
+                <Eye className="h-4 w-4" />
+                Sichtbarkeit
+            </Label>
+            <RadioGroup value={visibility} onValueChange={(value: Task['visibility']) => setVisibility(value)} className="col-span-3 pt-2">
+                <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="public" id="vis-public" />
+                    <Label htmlFor="vis-public">Öffentlich (Alle Familienmitglieder)</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="private" id="vis-private" />
+                    <Label htmlFor="vis-private">Privat (nur für die zugewiesene Person)</Label>
+                </div>
+            </RadioGroup>
+          </div>
+
         </div>
         <DialogFooter className='justify-between'>
           <div>

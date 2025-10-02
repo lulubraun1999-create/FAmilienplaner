@@ -41,6 +41,7 @@ export type Task = {
   dueDate: Timestamp | Date;
   priority: 'low' | 'medium' | 'high';
   completed: boolean;
+  visibility: 'public' | 'private';
 };
 
 export type ShoppingListItem = {
