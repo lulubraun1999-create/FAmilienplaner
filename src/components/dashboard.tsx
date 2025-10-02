@@ -23,7 +23,7 @@ type CalendarViewType = 'month' | 'week' | 'day';
 
 export default function Dashboard() {
   const [selectedCalendarId, setSelectedCalendarId] = useState('all');
-  const { firestore } = useFirebase();
+  const { firestore, user } = useFirebase();
   const familyName = 'Familie-Butz-Braun';
 
   // State for dialogs
@@ -122,8 +122,7 @@ export default function Dashboard() {
     } else {
       // Add new event
       if (firestore && eventsRef) {
-        const newEventRef = doc(eventsRef);
-        setDoc(newEventRef, { ...eventData, id: newEventRef.id });
+        addDoc(eventsRef, eventData);
       }
     }
   };
@@ -150,8 +149,7 @@ export default function Dashboard() {
     } else {
       // Add new task
       if (firestore && tasksRef) {
-        const newTaskRef = doc(tasksRef);
-        setDoc(newTaskRef, { ...taskData, id: newTaskRef.id });
+        addDoc(tasksRef, taskData);
       }
     }
   }
@@ -162,6 +160,30 @@ export default function Dashboard() {
       deleteDoc(taskDocRef);
     }
   }
+
+  const handleAddShoppingItem = (itemName: string) => {
+    if (shoppingListRef && user) {
+        addDoc(shoppingListRef, {
+            name: itemName,
+            addedBy: 'me', // Hardcoded for now, should be dynamic
+            purchased: false,
+        });
+    }
+  };
+
+  const handleUpdateShoppingItem = (itemId: string, purchased: boolean) => {
+    if (shoppingListRef) {
+        const itemDocRef = doc(shoppingListRef, itemId);
+        updateDoc(itemDocRef, { purchased });
+    }
+  };
+
+  const handleDeleteShoppingItem = (itemId: string) => {
+    if (shoppingListRef) {
+        const itemDocRef = doc(shoppingListRef, itemId);
+        deleteDoc(itemDocRef);
+    }
+  };
 
   const handleAddLocation = async (newLocation: Omit<Location, 'id'>): Promise<string> => {
     if (locationsRef) {
@@ -316,7 +338,13 @@ export default function Dashboard() {
                 />
               </TabsContent>
               <TabsContent value="shopping" className="mt-4">
-                <ShoppingList items={filteredData.shoppingItems} members={familyMembers} />
+                <ShoppingList 
+                    items={filteredData.shoppingItems} 
+                    members={familyMembers}
+                    onAddItem={handleAddShoppingItem}
+                    onUpdateItem={handleUpdateShoppingItem}
+                    onDeleteItem={handleDeleteShoppingItem}
+                />
               </TabsContent>
               <TabsContent value="dog-plan" className="mt-4">
                 <DogPlan items={filteredData.dogPlanItems} members={familyMembers} />
@@ -347,3 +375,5 @@ export default function Dashboard() {
     </>
   );
 }
+
+    
