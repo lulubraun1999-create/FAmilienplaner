@@ -16,6 +16,8 @@ import { Plus, Trash2 } from 'lucide-react';
 import type { Location } from '@/lib/types';
 import { ScrollArea } from './ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
+
 
 interface LocationDialogProps {
   isOpen: boolean;
@@ -23,9 +25,10 @@ interface LocationDialogProps {
   locations: Location[];
   onAddLocation: (location: Omit<Location, 'id'>) => Promise<string>;
   onSelectLocation: (locationId: string) => void;
+  onDeleteLocation: (locationId: string) => void;
 }
 
-export default function LocationDialog({ isOpen, setIsOpen, locations, onAddLocation, onSelectLocation }: LocationDialogProps) {
+export default function LocationDialog({ isOpen, setIsOpen, locations, onAddLocation, onSelectLocation, onDeleteLocation }: LocationDialogProps) {
   const [name, setName] = useState('');
   const [street, setStreet] = useState('');
   const [housenumber, setHousenumber] = useState('');
@@ -48,12 +51,16 @@ export default function LocationDialog({ isOpen, setIsOpen, locations, onAddLoca
     setHousenumber('');
     setPostalcode('');
     setCity('');
-    setIsOpen(false);
   };
   
   const handleLocationClick = (locationId: string) => {
     onSelectLocation(locationId);
     setIsOpen(false);
+  }
+
+  const handleDeleteClick = (e: React.MouseEvent, locationId: string) => {
+    e.stopPropagation(); // Prevent the click from selecting the location
+    onDeleteLocation(locationId);
   }
 
   return (
@@ -71,16 +78,34 @@ export default function LocationDialog({ isOpen, setIsOpen, locations, onAddLoca
                 <div className="p-2">
                     {locations.length > 0 ? (
                         locations.map(loc => (
-                            <button 
+                            <div 
                                 key={loc.id} 
-                                className="w-full text-left p-2 rounded-md hover:bg-accent flex justify-between items-center"
-                                onClick={() => handleLocationClick(loc.id)}
+                                className="w-full text-left p-2 rounded-md hover:bg-accent flex justify-between items-center group"
                             >
-                                <div>
+                                <button className='text-left flex-grow' onClick={() => handleLocationClick(loc.id)}>
                                     <p className="font-semibold">{loc.name}</p>
                                     <p className="text-sm text-muted-foreground">{loc.street} {loc.housenumber}, {loc.postalcode} {loc.city}</p>
-                                </div>
-                            </button>
+                                </button>
+                                 <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100" onClick={(e) => e.stopPropagation()}>
+                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Bist du sicher?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Diese Aktion kann nicht rückgängig gemacht werden. Der Ort '{loc.name}' wird dauerhaft gelöscht.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Abbrechen</AlertDialogCancel>
+                                        <AlertDialogAction onClick={(e) => handleDeleteClick(e, loc.id)}>Löschen</AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                            </div>
                         ))
                     ) : (
                         <p className="p-4 text-center text-sm text-muted-foreground">Noch keine Orte gespeichert.</p>

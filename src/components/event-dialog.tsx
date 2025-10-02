@@ -14,11 +14,11 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Calendar } from './ui/calendar';
-import { CalendarIcon, Clock, Sparkles, Loader2, Users, FileText, MapPin, Trash2 } from 'lucide-react';
+import { CalendarIcon, Clock, Sparkles, Loader2, Users, FileText, MapPin, Trash2, CheckCircle, XCircle, HelpCircle } from 'lucide-react';
 import { format, set, startOfDay, endOfDay, differenceInMinutes, isAfter } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn, getInitials } from '@/lib/utils';
-import type { FamilyMember, Event, CalendarGroup, Location } from '@/lib/types';
+import type { FamilyMember, Event, CalendarGroup, Location, EventParticipant, ParticipantStatus } from '@/lib/types';
 import { getAISuggestions } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -40,9 +40,23 @@ interface EventDialogProps {
   calendarGroups: CalendarGroup[];
   locations: Location[];
   onAddLocation: (location: Omit<Location, 'id'>) => Promise<string>;
+  onDeleteLocation: (locationId: string) => void;
+  me: FamilyMember | undefined;
 }
 
-export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event, allFamilyMembers, calendarGroups, locations, onAddLocation }: EventDialogProps) {
+const statusIcons: Record<ParticipantStatus, React.ElementType> = {
+    accepted: CheckCircle,
+    declined: XCircle,
+    pending: HelpCircle
+};
+
+const statusColors: Record<ParticipantStatus, string> = {
+    accepted: 'text-green-500',
+    declined: 'text-red-500',
+    pending: 'text-yellow-500'
+};
+
+export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event, allFamilyMembers, calendarGroups, locations, onAddLocation, onDeleteLocation, me }: EventDialogProps) {
   const [title, setTitle] = useState('');
   const [startDate, setStartDate] = useState<Date | undefined>(new Date());
   const [endDate, setEndDate] = useState<Date | undefined>(new Date());
@@ -51,7 +65,7 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event
   const [isAllDay, setIsAllDay] = useState(false);
   const [locationId, setLocationId] = useState('');
   const [description, setDescription] = useState('');
-  const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
+  const [participants, setParticipants] = useState<EventParticipant[]>([]);
   
   const [preferredTime, setPreferredTime] = useState('afternoon');
   const [suggestions, setSuggestions] = useState<Awaited<ReturnType<typeof getAISuggestions>>['suggestions']>([]);
@@ -70,7 +84,7 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event
       setIsAllDay(false);
       setLocationId('');
       setDescription('');
-      setSelectedParticipants([]);
+      setParticipants(me ? [{ userId: me.id, status: 'accepted' }] : []);
       setSuggestions([]);
   }
 
@@ -85,12 +99,12 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event
         setIsAllDay(event.allDay || false);
         setLocationId(event.locationId || '');
         setDescription(event.description || '');
-        setSelectedParticipants(event.participants ? [...event.participants] : []);
+        setParticipants(event.participants ? [...event.participants] : []);
       } else {
         resetForm();
       }
     }
-  }, [event, isOpen]);
+  }, [event, isOpen, me]);
   
   const handleSave = () => {
     if (!title || !startDate || !endDate) return;
@@ -120,8 +134,9 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event
       end: endDateTime,
       locationId,
       description,
-      participants: selectedParticipants,
+      participants,
       allDay: isAllDay,
+      createdBy: event?.createdBy || me?.id || ''
     };
 
     if (event?.id) {
@@ -185,21 +200,34 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event
   }
 
   const toggleParticipant = (participantId: string) => {
-    setSelectedParticipants(prev => 
-      prev.includes(participantId) 
-        ? prev.filter(id => id !== participantId)
-        : [...prev, participantId]
-    );
+    const existingParticipant = participants.find(p => p.userId === participantId);
+    if (existingParticipant) {
+      setParticipants(prev => prev.filter(p => p.userId !== participantId));
+    } else {
+      const status: ParticipantStatus = participantId === me?.id ? 'accepted' : 'pending';
+      setParticipants(prev => [...prev, { userId: participantId, status }]);
+    }
   };
   
   const toggleGroup = (memberIds: readonly string[]) => {
-    const allSelected = memberIds.length > 0 && memberIds.every(id => selectedParticipants.includes(id));
+    if (memberIds.length === 0) return;
+    const participantIds = participants.map(p => p.userId);
+    const allSelected = memberIds.every(id => participantIds.includes(id));
+    
     if (allSelected) {
-      setSelectedParticipants(prev => prev.filter(id => !memberIds.includes(id)));
+      setParticipants(prev => prev.filter(p => !memberIds.includes(p.userId)));
     } else {
-      setSelectedParticipants(prev => [...new Set([...prev, ...memberIds])]);
+      const newParticipants = memberIds
+        .filter(id => !participantIds.includes(id))
+        .map(id => ({ userId: id, status: (id === me?.id ? 'accepted' : 'pending') as ParticipantStatus }));
+      setParticipants(prev => [...prev, ...newParticipants]);
     }
   }
+
+  const handleStatusChange = (userId: string, status: ParticipantStatus) => {
+    setParticipants(prev => prev.map(p => p.userId === userId ? { ...p, status } : p));
+  };
+
 
   const selectedLocationName = locations.find(l => l.id === locationId)?.name || "Ort auswählen";
 
@@ -299,30 +327,37 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event
                   <PopoverTrigger asChild>
                     <Button variant="outline" className="w-full justify-start text-left font-normal">
                       <span className="truncate">
-                        {selectedParticipants.length > 0 
-                          ? selectedParticipants.map(id => allFamilyMembers.find(p => p.id === id)?.name).join(', ')
+                        {participants.length > 0 
+                          ? participants.map(p => allFamilyMembers.find(member => member.id === p.userId)?.name).join(', ')
                           : "Teilnehmer auswählen"}
                       </span>
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-[300px] p-0">
                     <div className="flex flex-col gap-1 p-2">
-                      {calendarGroups.map(group => (
-                        <React.Fragment key={group.id}>
-                          <Label className="flex items-center gap-2 p-2 rounded-md hover:bg-accent font-semibold">
-                            <Checkbox
-                              checked={group.members.length > 0 && group.members.every(id => selectedParticipants.includes(id))}
-                              onCheckedChange={() => toggleGroup(group.members)}
-                            />
-                            <span>{group.name}</span>
-                          </Label>
-                          <Separator />
-                        </React.Fragment>
-                      ))}
+                       {calendarGroups.map(group => {
+                            if (group.members.length === 0) return null;
+                            const isAllSelected = group.id === 'all'
+                                ? allFamilyMembers.length > 0 && allFamilyMembers.every(m => participants.some(p => p.userId === m.id))
+                                : group.members.every(id => participants.some(p => p.userId === id));
+
+                            return (
+                                <React.Fragment key={group.id}>
+                                    <Label className="flex items-center gap-2 p-2 rounded-md hover:bg-accent font-semibold">
+                                        <Checkbox
+                                            checked={isAllSelected}
+                                            onCheckedChange={() => toggleGroup(group.id === 'all' ? allFamilyMembers.map(m => m.id) : group.members)}
+                                        />
+                                        <span>{group.name}</span>
+                                    </Label>
+                                    <Separator />
+                                </React.Fragment>
+                            );
+                        })}
                       {allFamilyMembers.map(p => (
                         <Label key={p.id} className="flex items-center gap-2 p-2 rounded-md hover:bg-accent">
                           <Checkbox 
-                            checked={selectedParticipants.includes(p.id)}
+                            checked={participants.some(par => par.userId === p.id)}
                             onCheckedChange={() => toggleParticipant(p.id)}
                           />
                            <Avatar className="h-6 w-6">
@@ -336,6 +371,40 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event
                 </Popover>
               </div>
             </div>
+
+             {participants.length > 0 && (
+                <div className="grid grid-cols-4 items-start gap-4">
+                  <Label className="text-right pt-2">Status</Label>
+                  <div className="col-span-3 space-y-2">
+                    {participants.map(p => {
+                      const member = allFamilyMembers.find(m => m.id === p.userId);
+                      if (!member) return null;
+                      const StatusIcon = statusIcons[p.status];
+                      return (
+                        <div key={p.userId} className="flex items-center justify-between gap-2">
+                           <div className="flex items-center gap-2">
+                             <Avatar className="h-6 w-6">
+                               <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
+                             </Avatar>
+                             <span>{member.name}</span>
+                           </div>
+                           {p.userId === me?.id ? (
+                               <div className="flex items-center gap-1">
+                                <Button size="sm" variant={p.status === 'accepted' ? 'default' : 'ghost'} onClick={() => handleStatusChange(p.userId, 'accepted')}>Zusagen</Button>
+                                <Button size="sm" variant={p.status === 'declined' ? 'destructive' : 'ghost'} onClick={() => handleStatusChange(p.userId, 'declined')}>Absagen</Button>
+                               </div>
+                           ) : (
+                            <div className="flex items-center gap-2">
+                                <StatusIcon className={cn("h-5 w-5", statusColors[p.status])} />
+                                <span className='text-sm capitalize'>{p.status === 'pending' ? 'Ausstehend' : (p.status === 'accepted' ? 'Zugesagt' : 'Abgesagt')}</span>
+                           </div>
+                           )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+            )}
             
             <div className="grid grid-cols-4 items-start gap-4">
               <Label htmlFor="description" className="text-right pt-2 flex items-center gap-2 justify-end">
@@ -383,7 +452,7 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event
           </div>
           <DialogFooter className='justify-between'>
             <div>
-            {event && (
+            {event && event.createdBy === me?.id && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" type="button">
@@ -422,6 +491,7 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event
           setLocationId(locationId);
           setIsLocationDialogOpen(false);
         }}
+        onDeleteLocation={onDeleteLocation}
       />
     </>
   );

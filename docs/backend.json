@@ -63,16 +63,32 @@
         },
         "participants": {
           "type": "array",
-          "description": "References to Users. The users who are attending the event.",
+          "description": "An array of participant objects, including their RSVP status.",
           "items": {
-            "type": "string"
+            "type": "object",
+            "properties": {
+              "userId": {
+                "type": "string",
+                "description": "Reference to the User."
+              },
+              "status": {
+                "type": "string",
+                "enum": ["accepted", "declined", "pending"]
+              }
+            },
+            "required": ["userId", "status"]
           }
+        },
+        "createdBy": {
+          "type": "string",
+          "description": "Reference to User. The user who created the event."
         }
       },
       "required": [
         "title",
         "start",
-        "end"
+        "end",
+        "createdBy"
       ]
     },
     "Task": {
@@ -220,12 +236,6 @@
             "$ref": "#/entities/Location"
         },
         "description": "Stores reusable locations for a family."
-    },
-    "/users/{userId}": {
-      "schema": {
-        "$ref": "#/entities/User"
-      },
-      "description": "Stores user profiles."
     }
   }
 }

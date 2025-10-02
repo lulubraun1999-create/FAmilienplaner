@@ -146,10 +146,11 @@ export default function Dashboard() {
     if (!event && me) { // Use 'me' object which has a consistent ID
         const newEventTemplate: Partial<Event> = {
             title: '',
-            participants: [me.id],
+            participants: [{ userId: me.id, status: 'accepted' }],
             allDay: false,
             start: new Date(),
             end: new Date(new Date().getTime() + 60 * 60 * 1000), 
+            createdBy: me.id,
         };
         setSelectedEvent(newEventTemplate as Event);
     } else {
@@ -171,12 +172,13 @@ export default function Dashboard() {
         });
       }
     } else {
-      if (firestore && eventsRef) {
-        addDoc(eventsRef, eventData).catch(e => {
+      if (firestore && eventsRef && me) {
+        const dataWithCreator = { ...eventData, createdBy: me.id };
+        addDoc(eventsRef, dataWithCreator).catch(e => {
              errorEmitter.emit('permission-error', new FirestorePermissionError({
                 path: eventsRef.path,
                 operation: 'create',
-                requestResourceData: eventData
+                requestResourceData: dataWithCreator
             }));
         });
       }
@@ -351,6 +353,18 @@ export default function Dashboard() {
     return '';
   };
   
+    const handleDeleteLocation = (locationId: string) => {
+        if (locationsRef) {
+            const locationDocRef = doc(locationsRef, locationId);
+            deleteDoc(locationDocRef).catch(e => {
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                    path: locationDocRef.path,
+                    operation: 'delete'
+                }));
+            });
+        }
+    };
+  
   const handleUpdateProfile = (updatedMember: FamilyMember) => {
      if (user) {
         // Only update the display name in Firebase Auth, as we don't have a user document
@@ -376,7 +390,7 @@ export default function Dashboard() {
     
     if (selectedCalendarId === 'my_calendar') {
         const myUserId = me?.id || '';
-        const myEvents = localEvents.filter(event => event.participants.includes(myUserId));
+        const myEvents = localEvents.filter(event => event.participants.some(p => p.userId === myUserId));
         const myTasks = localTasks.filter(task => task.assignedTo === myUserId);
         const myShoppingItems = localShoppingItems.filter(item => item.assignedTo === myUserId);
         const myDogPlanItems = localDogPlanItems.filter(item => item.assignedTo === myUserId);
@@ -393,7 +407,7 @@ export default function Dashboard() {
 
     const memberIdsInGroup = new Set(currentGroup?.members);
     
-    const groupEvents = localEvents.filter(event => event.participants.some(p => memberIdsInGroup.has(p)));
+    const groupEvents = localEvents.filter(event => event.participants.some(p => memberIdsInGroup.has(p.userId)));
     const groupTasks = localTasks.filter(task => memberIdsInGroup.has(task.assignedTo));
     const groupShoppingItems = localShoppingItems; 
     const groupDogPlanItems = localDogPlanItems.filter(item => item.assignedTo && memberIdsInGroup.has(item.assignedTo));
@@ -525,6 +539,8 @@ export default function Dashboard() {
         calendarGroups={[{id: 'all', name: 'Alle', members: (familyMembers || []).map(m => m.id)}, ...calendarGroups]}
         locations={localLocations}
         onAddLocation={handleAddLocation}
+        onDeleteLocation={handleDeleteLocation}
+        me={me}
       />
       <TaskDialog
         isOpen={isTaskDialogOpen}

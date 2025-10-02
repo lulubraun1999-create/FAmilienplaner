@@ -32,6 +32,13 @@ export type Location = {
     city: string;
 }
 
+export type ParticipantStatus = 'accepted' | 'declined' | 'pending';
+
+export type EventParticipant = {
+  userId: string;
+  status: ParticipantStatus;
+}
+
 export type Event = {
   id: string;
   title: string;
@@ -40,7 +47,8 @@ export type Event = {
   allDay?: boolean;
   locationId?: string;
   description?: string;
-  participants: readonly FamilyMember['id'][];
+  participants: EventParticipant[];
+  createdBy: string;
 };
 
 export type Task = {
