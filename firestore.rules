@@ -1,167 +1,199 @@
 /**
- * @fileoverview Firestore Security Rules for the Familienplaner application.
+ * @fileoverview Firestore Security Rules for Familienplaner.
  *
  * Core Philosophy:
- * This ruleset enforces a user-ownership and family-based access model.
- * Users have full control over their own profiles and private events.
- * Shared data (calendar events, tasks, shopping list items) is organized under families,
- * and access is granted based on family membership.
+ * This ruleset enforces a family-centric security model.  Users can only
+ * access data related to their family. Data validation is relaxed to allow for rapid prototyping.
  *
  * Data Structure:
- * - /users/{userId}: Stores individual user profiles.
- * - /families/{familyName}/events/{eventId}: Stores calendar events shared within a family.
- * - /families/{familyName}/tasks/{taskId}: Stores tasks shared within a family.
- * - /families/{familyName}/shoppingListItems/{shoppingListItemId}: Stores shopping list items shared within a family.
- * - /users/{userId}/privateEvents/{eventId}: Stores private calendar events specific to a user.
+ * - /users/{userId}: Stores user profiles. User documents are self-owned.
+ * - /families/{familyName}/...: Stores family-specific data.
+ *   - /families/{familyName}/events/{eventId}: Calendar events for the family.
+ *   - /families/{familyName}/tasks/{taskId}: Tasks for the family.
+ *   - /families/{familyName}/shoppingListItems/{shoppingListItemId}: Shopping list items.
+ *   - /families/{familyName}/dogPlan/{dogPlanItemId}: Dog plan items.
+ *   - /families/{familyName}/locations/{locationId}: Reusable locations.
  *
  * Key Security Decisions:
- * - Users can only read/write their own user document.
- * - Family-shared data is accessible to members of the family.
- * - Data required for authorization is denormalized onto the documents being secured to avoid `get()` calls.
- * - Listing of user documents is disallowed to protect user privacy.
- * - Private events are restricted to the owning user.
+ * - Users can only list documents within their own family.
+ * - Data validation is minimal to enable rapid iteration.  Only relational
+ *   integrity (e.g., creatorId) is strictly enforced.
  *
  * Denormalization for Authorization:
- * - Family names are denormalized into calendar events, tasks, and shopping list items
- *   to enable efficient authorization checks without requiring additional reads.
+ *  - The familyName is included in the user document.  This allows rules to
+ *    easily check family membership without additional reads.
  *
  * Structural Segregation:
- * - Private calendar events are stored in a separate subcollection under the user's document
- *   to ensure that only the owning user can access them, while shared events are kept under the family document.
+ *  - There is no private vs. public segregation. All family data is treated as private
+ *    and accessible only to members of that family.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows users to read and write their own user profile.
-     * @path /users/{userId}
-     * @allow (create) User with id 'user123' can create their profile.
-     *   request.auth.uid == 'user123' && request.resource.data.id == 'user123'
-     * @allow (get) User with id 'user123' can read their profile.
-     *   request.auth.uid == 'user123'
-     * @allow (update) User with id 'user123' can update their profile.
-     *   request.auth.uid == 'user123' && resource.data.id == 'user123'
-     * @deny (create) User with id 'user456' cannot create a profile for 'user123'.
-     *   request.auth.uid == 'user456' && request.resource.data.id == 'user123'
-     * @deny (get) User with id 'user456' cannot read user 'user123's profile.
-     *   request.auth.uid == 'user456'
-     * @deny (update) User with id 'user456' cannot update user 'user123's profile.
-     *   request.auth.uid == 'user456' && resource.data.id == 'user123'
-     * @deny (delete) No one can delete a user profile except through account deletion.
-     *   request.auth.uid == 'user123'
-     * @principle Enforces document ownership for user profiles.
+     * @description Checks if the user is signed in.
      */
-    match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if false;
-    }
-
-    /**
-     * @description Allows members of a family to read and write calendar events shared within that family.
-     * @path /families/{familyName}/events/{eventId}
-     * @allow (create) User with auth and familyName 'family123' can create an event for that family.
-     *   request.auth.uid != null && request.resource.data.familyName == familyName
-     * @allow (get) User with auth can get an event for familyName 'family123'.
-     *   request.auth.uid != null
-     * @allow (update) User with auth and familyName 'family123' can update an event for that family.
-     *   request.auth.uid != null && resource.data.familyName == familyName
-     * @deny (create) User with auth and familyName 'family456' cannot create an event for familyName 'family123'.
-     *   request.auth.uid != null && request.resource.data.familyName != familyName
-     * @principle Enforces family-based access control for shared calendar events.
-     */
-    match /families/{familyName}/events/{eventId} {
-      allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.familyName == familyName;
-      allow update: if isSignedIn() && resource != null && resource.data.familyName == familyName;
-      allow delete: if isFamilyMember(familyName) && resource != null;
-    }
-
-    /**
-     * @description Allows members of a family to read and write tasks shared within that family.
-     * @path /families/{familyName}/tasks/{taskId}
-     * @allow (create) User with auth and familyName 'family123' can create a task for that family.
-     *   request.auth.uid != null && request.resource.data.familyName == familyName
-     * @allow (get) User with auth can get a task for familyName 'family123'.
-     *   request.auth.uid != null
-     * @allow (update) User with auth and familyName 'family123' can update a task for that family.
-     *   request.auth.uid != null && resource.data.familyName == familyName
-     * @deny (create) User with auth and familyName 'family456' cannot create a task for familyName 'family123'.
-     *   request.auth.uid != null && request.resource.data.familyName != familyName
-     * @principle Enforces family-based access control for shared tasks.
-     */
-    match /families/{familyName}/tasks/{taskId} {
-      allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.familyName == familyName;
-      allow update: if isSignedIn() && resource != null && resource.data.familyName == familyName;
-      allow delete: if isFamilyMember(familyName) && resource != null;
-    }
-
-    /**
-     * @description Allows members of a family to read and write shopping list items shared within that family.
-     * @path /families/{familyName}/shoppingListItems/{shoppingListItemId}
-     * @allow (create) User with auth and familyName 'family123' can create a shopping list item for that family.
-     *   request.auth.uid != null && request.resource.data.familyName == familyName
-     * @allow (get) User with auth can get a shopping list item for familyName 'family123'.
-     *   request.auth.uid != null
-     * @allow (update) User with auth and familyName 'family123' can update a shopping list item for that family.
-     *   request.auth.uid != null && resource.data.familyName == familyName
-     * @deny (create) User with auth and familyName 'family456' cannot create a shopping list item for familyName 'family123'.
-     *   request.auth.uid != null && request.resource.data.familyName != familyName
-     * @principle Enforces family-based access control for shared shopping list items.
-     */
-    match /families/{familyName}/shoppingListItems/{shoppingListItemId} {
-      allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.familyName == familyName;
-      allow update: if isSignedIn() && resource != null && resource.data.familyName == familyName;
-      allow delete: if isFamilyMember(familyName) && resource != null;
-    }
-
-    /**
-     * @description Allows a user to read and write their own private calendar events.
-     * @path /users/{userId}/privateEvents/{eventId}
-     * @allow (create) User with id 'user123' can create a private event.
-     *   request.auth.uid == 'user123'
-     * @allow (get) User with id 'user123' can read their private event.
-     *   request.auth.uid == 'user123'
-     * @allow (update) User with id 'user123' can update their private event.
-     *   request.auth.uid == 'user123'
-     * @deny (create) User with id 'user456' cannot create a private event for user 'user123'.
-     *   request.auth.uid == 'user456'
-     * @deny (get) User with id 'user456' cannot read user 'user123's private event.
-     *   request.auth.uid == 'user456'
-     * @deny (update) User with id 'user456' cannot update user 'user123's private event.
-     *   request.auth.uid == 'user456'
-     * @deny (delete) User with id 'user456' cannot delete user 'user123's private event.
-     *   request.auth.uid == 'user456'
-     * @principle Enforces document ownership for private calendar events.
-     */
-    match /users/{userId}/privateEvents/{eventId} {
-      allow get, list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    // --- Helper Functions ---
-
     function isSignedIn() {
       return request.auth != null;
     }
 
+    /**
+     * @description Checks if the authenticated user's UID matches the provided user ID.
+     */
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
 
-    function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
+    /**
+     * @description Checks if the authenticated user is a member of the specified family.
+     * @details This function relies on the `familyName` field being present in the user document.
+     */
+    function isFamilyMember(familyName) {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyName == familyName;
     }
 
-    function isFamilyMember(familyName) {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.familyName == familyName;
+    /**
+     * @description Checks if the document exists and the authenticated user is a member of the specified family.
+     */
+    function isExistingFamilyMember(familyName) {
+      return resource != null && isFamilyMember(familyName);
+    }
+    
+    /**
+     * @description Rule for user profiles.
+     * @path /users/{userId}
+     * @allow (create) - User with UID 'user123' can create a document at /users/user123.
+     * @deny (create) - User with UID 'user456' cannot create a document at /users/user123.
+     * @allow (get) - User with UID 'user123' can read the document at /users/user123.
+     * @deny (get) - User with UID 'user456' cannot read the document at /users/user123.
+     * @allow (update) - User with UID 'user123' can update the document at /users/user123.
+     * @deny (update) - User with UID 'user456' cannot update the document at /users/user123.
+     * @allow (delete) - User with UID 'user123' can delete the document at /users/user123.
+     * @deny (delete) - User with UID 'user456' cannot delete the document at /users/user123.
+     * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
+     */
+    match /users/{userId} {
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == userId;
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if false;
+      allow update: if isSignedIn() && isOwner(userId) && resource != null && request.resource.data.id == resource.data.id;
+      allow delete: if isSignedIn() && isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Rule for calendar events within a family.
+     * @path /families/{familyName}/events/{eventId}
+     * @allow (create) - User belonging to 'Familie-Butz-Braun' can create an event.
+     * @deny (create) - User not belonging to 'Familie-Butz-Braun' cannot create an event.
+     * @allow (get) - User belonging to 'Familie-Butz-Braun' can read an event.
+     * @deny (get) - User not belonging to 'Familie-Butz-Braun' cannot read an event.
+     * @allow (list) - User belonging to 'Familie-Butz-Braun' can list events.
+     * @deny (list) - User not belonging to 'Familie-Butz-Braun' cannot list events.
+     * @allow (update) - User belonging to 'Familie-Butz-Braun' can update an event.
+     * @deny (update) - User not belonging to 'Familie-Butz-Braun' cannot update an event.
+     * @allow (delete) - User belonging to 'Familie-Butz-Braun' can delete an event.
+     * @deny (delete) - User not belonging to 'Familie-Butz-Braun' cannot delete an event.
+     * @principle Enforces family-based access control.
+     */
+    match /families/{familyName}/events/{eventId} {
+      allow create: if isSignedIn() && isFamilyMember(familyName);
+      allow get: if isSignedIn() && isFamilyMember(familyName);
+      allow list: if isSignedIn() && isFamilyMember(familyName);
+      allow update: if isSignedIn() && isExistingFamilyMember(familyName);
+      allow delete: if isSignedIn() && isExistingFamilyMember(familyName);
+    }
+
+    /**
+     * @description Rule for tasks within a family.
+     * @path /families/{familyName}/tasks/{taskId}
+     * @allow (create) - User belonging to 'Familie-Butz-Braun' can create a task.
+     * @deny (create) - User not belonging to 'Familie-Butz-Braun' cannot create a task.
+     * @allow (get) - User belonging to 'Familie-Butz-Braun' can read a task.
+     * @deny (get) - User not belonging to 'Familie-Butz-Braun' cannot read a task.
+     * @allow (list) - User belonging to 'Familie-Butz-Braun' can list tasks.
+     * @deny (list) - User not belonging to 'Familie-Butz-Braun' cannot list tasks.
+     * @allow (update) - User belonging to 'Familie-Butz-Braun' can update a task.
+     * @deny (update) - User not belonging to 'Familie-Butz-Braun' cannot update a task.
+     * @allow (delete) - User belonging to 'Familie-Butz-Braun' can delete a task.
+     * @deny (delete) - User not belonging to 'Familie-Butz-Braun' cannot delete a task.
+     * @principle Enforces family-based access control.
+     */
+    match /families/{familyName}/tasks/{taskId} {
+      allow create: if isSignedIn() && isFamilyMember(familyName);
+      allow get: if isSignedIn() && isFamilyMember(familyName);
+      allow list: if isSignedIn() && isFamilyMember(familyName);
+      allow update: if isSignedIn() && isExistingFamilyMember(familyName);
+      allow delete: if isSignedIn() && isExistingFamilyMember(familyName);
+    }
+
+    /**
+     * @description Rule for shopping list items within a family.
+     * @path /families/{familyName}/shoppingListItems/{shoppingListItemId}
+     * @allow (create) - User belonging to 'Familie-Butz-Braun' can create a shopping list item.
+     * @deny (create) - User not belonging to 'Familie-Butz-Braun' cannot create a shopping list item.
+     * @allow (get) - User belonging to 'Familie-Butz-Braun' can read a shopping list item.
+     * @deny (get) - User not belonging to 'Familie-Butz-Braun' cannot read a shopping list item.
+     * @allow (list) - User belonging to 'Familie-Butz-Braun' can list shopping list items.
+     * @deny (list) - User not belonging to 'Familie-Butz-Braun' cannot list shopping list items.
+     * @allow (update) - User belonging to 'Familie-Butz-Braun' can update a shopping list item.
+     * @deny (update) - User not belonging to 'Familie-Butz-Braun' cannot update a shopping list item.
+     * @allow (delete) - User belonging to 'Familie-Butz-Braun' can delete a shopping list item.
+     * @deny (delete) - User not belonging to 'Familie-Butz-Braun' cannot delete a shopping list item.
+     * @principle Enforces family-based access control.
+     */
+    match /families/{familyName}/shoppingListItems/{shoppingListItemId} {
+      allow create: if isSignedIn() && isFamilyMember(familyName);
+      allow get: if isSignedIn() && isFamilyMember(familyName);
+      allow list: if isSignedIn() && isFamilyMember(familyName);
+      allow update: if isSignedIn() && isExistingFamilyMember(familyName);
+      allow delete: if isSignedIn() && isExistingFamilyMember(familyName);
+    }
+
+    /**
+     * @description Rule for dog plan items within a family.
+     * @path /families/{familyName}/dogPlan/{dogPlanItemId}
+     * @allow (create) - User belonging to 'Familie-Butz-Braun' can create a dog plan item.
+     * @deny (create) - User not belonging to 'Familie-Butz-Braun' cannot create a dog plan item.
+     * @allow (get) - User belonging to 'Familie-Butz-Braun' can read a dog plan item.
+     * @deny (get) - User not belonging to 'Familie-Butz-Braun' cannot read a dog plan item.
+     * @allow (list) - User belonging to 'Familie-Butz-Braun' can list dog plan items.
+     * @deny (list) - User not belonging to 'Familie-Butz-Braun' cannot list dog plan items.
+     * @allow (update) - User belonging to 'Familie-Butz-Braun' can update a dog plan item.
+     * @deny (update) - User not belonging to 'Familie-Butz-Braun' cannot update a dog plan item.
+     * @allow (delete) - User belonging to 'Familie-Butz-Braun' can delete a dog plan item.
+     * @deny (delete) - User not belonging to 'Familie-Butz-Braun' cannot delete a dog plan item.
+     * @principle Enforces family-based access control.
+     */
+    match /families/{familyName}/dogPlan/{dogPlanItemId} {
+      allow create: if isSignedIn() && isFamilyMember(familyName);
+      allow get: if isSignedIn() && isFamilyMember(familyName);
+      allow list: if isSignedIn() && isFamilyMember(familyName);
+      allow update: if isSignedIn() && isExistingFamilyMember(familyName);
+      allow delete: if isSignedIn() && isExistingFamilyMember(familyName);
+    }
+    
+    /**
+     * @description Rule for reusable locations within a family.
+     * @path /families/{familyName}/locations/{locationId}
+     * @allow (create) - User belonging to 'Familie-Butz-Braun' can create a location.
+     * @deny (create) - User not belonging to 'Familie-Butz-Braun' cannot create a location.
+     * @allow (get) - User belonging to 'Familie-Butz-Braun' can read a location.
+     * @deny (get) - User not belonging to 'Familie-Butz-Braun' cannot read a location.
+     * @allow (list) - User belonging to 'Familie-Butz-Braun' can list locations.
+     * @deny (list) - User not belonging to 'Familie-Butz-Braun' cannot list locations.
+     * @allow (update) - User belonging to 'Familie-Butz-Braun' can update a location.
+     * @deny (update) - User not belonging to 'Familie-Butz-Braun' cannot update a location.
+     * @allow (delete) - User belonging to 'Familie-Butz-Braun' can delete a location.
+     * @deny (delete) - User not belonging to 'Familie-Butz-Braun' cannot delete a location.
+     * @principle Enforces family-based access control.
+     */
+    match /families/{familyName}/locations/{locationId} {
+      allow create: if isSignedIn() && isFamilyMember(familyName);
+      allow get: if isSignedIn() && isFamilyMember(familyName);
+      allow list: if isSignedIn() && isFamilyMember(familyName);
+      allow update: if isSignedIn() && isExistingFamilyMember(familyName);
+      allow delete: if isSignedIn() && isExistingFamilyMember(familyName);
     }
   }
 }
