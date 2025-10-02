@@ -13,6 +13,9 @@ import {
   isSameDay,
   getISOWeek,
   add,
+  isWithinInterval,
+  startOfDay,
+  endOfDay,
 } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
@@ -51,7 +54,12 @@ export default function CalendarView({ events, locations, onEventClick, currentD
   };
   
   const getEventsForDay = (day: Date) => {
-    return events.filter(event => isSameDay(new Date(event.start.toString()), day));
+    return events.filter(event => 
+        isWithinInterval(day, { 
+            start: startOfDay(new Date(event.start.toString())), 
+            end: endOfDay(new Date(event.end.toString())) 
+        })
+    );
   }
   
   const getLocationById = (locationId: string) => {
@@ -106,12 +114,13 @@ export default function CalendarView({ events, locations, onEventClick, currentD
                         <div className='mt-2 space-y-1'>
                             {getEventsForDay(day).slice(0, 3).map(event => {
                                 const location = event.locationId ? getLocationById(event.locationId) : null;
+                                const isStartOfDay = isSameDay(new Date(event.start), day);
                                 return (
                                     <Tooltip key={event.id}>
                                     <TooltipTrigger asChild>
                                         <button className='w-full text-left' onClick={() => onEventClick(event)}>
                                             <Badge className='w-full truncate text-xs flex items-center justify-start gap-2 cursor-pointer' variant='secondary'>
-                                            <span>{format(new Date(event.start.toString()), 'HH:mm')}</span>
+                                            {isStartOfDay && !event.allDay && <span>{format(new Date(event.start.toString()), 'HH:mm')}</span>}
                                             <span className='truncate'>{event.title}</span>
                                             {location && <MapPin className="h-3 w-3 flex-shrink-0" />}
                                             </Badge>
