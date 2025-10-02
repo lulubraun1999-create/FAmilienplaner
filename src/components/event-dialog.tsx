@@ -19,7 +19,6 @@ import { format, set, startOfDay, endOfDay, differenceInMinutes, isAfter } from 
 import { de } from 'date-fns/locale';
 import { cn, getInitials } from '@/lib/utils';
 import type { FamilyMember, Event, CalendarGroup, Location, EventParticipant, ParticipantStatus } from '@/lib/types';
-import { getAISuggestions } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Textarea } from './ui/textarea';
@@ -67,9 +66,6 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event
   const [description, setDescription] = useState('');
   const [participants, setParticipants] = useState<EventParticipant[]>([]);
   
-  const [preferredTime, setPreferredTime] = useState('afternoon');
-  const [suggestions, setSuggestions] = useState<Awaited<ReturnType<typeof getAISuggestions>>['suggestions']>([]);
-  const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
   
@@ -85,7 +81,6 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event
       setLocationId('');
       setDescription('');
       setParticipants(me ? [{ userId: me.id, status: 'accepted' }] : []);
-      setSuggestions([]);
   }
 
   useEffect(() => {
@@ -159,44 +154,6 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event
       onDelete(event.id);
       setIsOpen(false);
     }
-  }
-
-
-  const handleGetSuggestions = () => {
-    const [startHours, startMinutes] = startTime.split(':').map(Number);
-    const [endHours, endMinutes] = endTime.split(':').map(Number);
-    const sDate = new Date();
-    sDate.setHours(startHours, startMinutes);
-    const eDate = new Date();
-    eDate.setHours(endHours, endMinutes);
-
-    const duration = differenceInMinutes(eDate, sDate);
-
-    if (duration <= 0) {
-        toast({ title: "Ungültige Dauer", description: "Die Endzeit muss nach der Startzeit liegen, um Vorschläge zu erhalten.", variant: 'destructive' });
-        return;
-    }
-
-    startTransition(async () => {
-        const result = await getAISuggestions(duration, preferredTime);
-        if (result.success) {
-            setSuggestions(result.suggestions);
-            if (result.suggestions && result.suggestions.length === 0) {
-              toast({ title: "Keine Vorschläge", description: "KI konnte keine freien Zeitfenster finden." });
-            }
-        } else {
-            toast({ title: "Fehler", description: result.error, variant: 'destructive' });
-        }
-    });
-  };
-  
-  const applySuggestion = (startTimeISO: string, endTimeISO: string) => {
-      const suggestedStartDate = new Date(startTimeISO);
-      const suggestedEndDate = new Date(endTimeISO);
-      setStartDate(suggestedStartDate);
-      setEndDate(suggestedEndDate);
-      setStartTime(format(suggestedStartDate, 'HH:mm'));
-      setEndTime(format(suggestedEndDate, 'HH:mm'));
   }
 
   const toggleParticipant = (participantId: string) => {
@@ -428,41 +385,6 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event
               <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} className="col-span-3" />
             </div>
 
-            {!isAllDay && (
-              <div className="grid grid-cols-4 items-start gap-4">
-                  <Label className="text-right pt-2">KI-Vorschläge</Label>
-                  <div className="col-span-3 space-y-2">
-                      <div className='grid grid-cols-2 gap-2'>
-                          <Select value={preferredTime} onValueChange={setPreferredTime}>
-                              <SelectTrigger>
-                                  <SelectValue placeholder="Bevorzugte Zeit" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                  <SelectItem value="morning">Morgens</SelectItem>
-                                  <SelectItem value="afternoon">Nachmittags</SelectItem>
-                                  <SelectItem value="evening">Abends</SelectItem>
-                              </SelectContent>
-                          </Select>
-                          <Button variant="outline" onClick={handleGetSuggestions} disabled={isPending}>
-                              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                              Zeit vorschlagen
-                          </Button>
-                      </div>
-                      {suggestions && suggestions.length > 0 && (
-                          <div className="space-y-2 rounded-md border p-2">
-                          <Label className="text-xs text-muted-foreground">Vorschläge:</Label>
-                          <div className='flex flex-wrap gap-2'>
-                              {suggestions.map((s, i) => (
-                              <Button key={i} size="sm" variant="secondary" onClick={() => applySuggestion(s.startTime, s.endTime)}>
-                                  {format(new Date(s.startTime), 'HH:mm')} - {format(new Date(s.endTime), 'HH:mm')}
-                              </Button>
-                              ))}
-                          </div>
-                          </div>
-                      )}
-                  </div>
-              </div>
-            )}
           </div>
           <DialogFooter className='justify-between'>
             <div>
