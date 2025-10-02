@@ -9,14 +9,14 @@ const findImage = (id: string) => {
 }
 
 export const initialFamilyMembers: FamilyMember[] = [
-  { id: 'dad', name: 'Matthias Butz', avatar: findImage('dad') },
-  { id: 'mom', name: 'Katrin Butz', avatar: findImage('mom') },
-  { id: 'sister', name: 'Lena Butz', avatar: findImage('sister') },
-  { id: 'me', name: 'Lukas Braun', avatar: findImage('me') },
-  { id: 'grandma', name: 'Editha Fröhle', avatar: findImage('grandma') },
-  { id: 'grandpa', name: 'Rolf Fröhle', avatar: findImage('grandpa') },
-  { id: 'aunt', name: 'Sandra Fröhle', avatar: findImage('aunt') },
-  { id: 'uncle', name: 'Markus Weiß', avatar: findImage('uncle') },
+  { id: 'dad', name: 'Matthias Butz', avatar: findImage('puppy1') },
+  { id: 'mom', name: 'Katrin Butz', avatar: findImage('puppy2') },
+  { id: 'sister', name: 'Lena Butz', avatar: findImage('puppy3') },
+  { id: 'me', name: 'Lukas Braun', avatar: findImage('puppy4') },
+  { id: 'grandma', name: 'Editha Fröhle', avatar: findImage('puppy5') },
+  { id: 'grandpa', name: 'Rolf Fröhle', avatar: findImage('puppy6') },
+  { id: 'aunt', name: 'Sandra Fröhle', avatar: findImage('puppy7') },
+  { id: 'uncle', name: 'Markus Weiß', avatar: findImage('puppy8') },
 ];
 
 export const calendarGroups: CalendarGroup[] = [
