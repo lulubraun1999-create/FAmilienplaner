@@ -8,14 +8,14 @@ const findImage = (id: string) => {
 }
 
 export const initialFamilyMembers: FamilyMember[] = [
-  { id: 'dad', name: 'Papa', avatar: findImage('dad') },
-  { id: 'mom', name: 'Mama', avatar: findImage('mom') },
-  { id: 'sister', name: 'Schwester', avatar: findImage('sister') },
-  { id: 'me', name: 'Ich', avatar: findImage('me') },
-  { id: 'grandma', name: 'Oma', avatar: findImage('grandma') },
-  { id: 'grandpa', name: 'Opa', avatar: findImage('grandpa') },
-  { id: 'aunt', name: 'Tante', avatar: findImage('aunt') },
-  { id: 'uncle', name: 'Onkel', avatar: findImage('uncle') },
+  { id: 'dad', name: 'Matthias Butz', avatar: findImage('dad') },
+  { id: 'mom', name: 'Katrin Butz', avatar: findImage('mom') },
+  { id: 'sister', name: 'Lena Butz', avatar: findImage('sister') },
+  { id: 'me', name: 'Lukas Braun', avatar: findImage('me') },
+  { id: 'grandma', name: 'Editha Fröhle', avatar: findImage('grandma') },
+  { id: 'grandpa', name: 'Rolf Fröhle', avatar: findImage('grandpa') },
+  { id: 'aunt', name: 'Sandra Fröhle', avatar: findImage('aunt') },
+  { id: 'uncle', name: 'Markus Weiß', avatar: findImage('uncle') },
 ];
 
 export const calendarGroups: CalendarGroup[] = [
@@ -97,16 +97,16 @@ export const initialDogPlanItems: DogPlanItem[] = [
 
 // Mock iCal data for AI suggestions
 export const familyICalData: Record<string, string[]> = {
-    'Papa': [
+    'Matthias Butz': [
         `BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nDTSTART:${new Date(new Date(nextWeek).setHours(19,0,0,0)).toISOString().replace(/[-:.]/g, '')}\nDTEND:${new Date(new Date(nextWeek).setHours(20,0,0,0)).toISOString().replace(/[-:.]/g, '')}\nSUMMARY:Elternabend\nEND:VEVENT\nEND:VCALENDAR`
     ],
-    'Mama': [
+    'Katrin Butz': [
         `BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nDTSTART:${new Date(new Date(nextWeek).setHours(19,0,0,0)).toISOString().replace(/[-:.]/g, '')}\nDTEND:${new Date(new Date(nextWeek).setHours(20,0,0,0)).toISOString().replace(/[-:.]/g, '')}\nSUMMARY:Elternabend\nEND:VEVENT\nEND:VCALENDAR`
     ],
-    'Schwester': [
+    'Lena Butz': [
         `BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nDTSTART:${new Date(new Date().setHours(17,0,0,0)).toISOString().replace(/[-:.]/g, '')}\nDTEND:${new Date(new Date().setHours(18,30,0,0)).toISOString().replace(/[-:.]/g, '')}\nSUMMARY:Fußballtraining\nEND:VEVENT\nEND:VCALENDAR`
     ],
-    'Ich': [
+    'Lukas Braun': [
         `BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nDTSTART:${new Date(new Date(new Date().setDate(new Date().getDate() + 1)).setHours(10,0,0,0)).toISOString().replace(/[-:.]/g, '')}\nDTEND:${new Date(new Date(new Date().setDate(new Date().getDate() + 1)).setHours(10,30,0,0)).toISOString().replace(/[-:.]/g, '')}\nSUMMARY:Zahnarzttermin\nEND:VEVENT\nEND:VCALENDAR`
     ],
 };
