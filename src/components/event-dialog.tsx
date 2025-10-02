@@ -251,22 +251,18 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamil
                 </div>
             </div>
 
-            <div className="grid grid-cols-4 items-start gap-4">
-              <Label htmlFor="location" className="text-right pt-2 flex items-center gap-2 justify-end">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="location" className="text-right flex items-center gap-2 justify-end">
                 <MapPin className="h-4 w-4" />
                 Ort
               </Label>
-              <div className="col-span-3 space-y-2">
-                <div className="grid grid-cols-3 gap-2">
-                  <Input id="street" placeholder="Straße" className="col-span-2" />
-                  <Input id="housenumber" placeholder="Nr." />
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <Input id="postalcode" placeholder="PLZ" />
-                  <Input id="city" placeholder="Stadt" className="col-span-2" />
-                </div>
+              <div className="col-span-3">
+                <Button variant="outline" className="w-full justify-start text-left font-normal">
+                  {location ? location : "Ort auswählen"}
+                </Button>
               </div>
             </div>
+            
 
           <div className="grid grid-cols-4 items-start gap-4">
             <Label className="text-right pt-2 flex items-center gap-2 justify-end">
@@ -369,3 +365,5 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamil
     </Dialog>
   );
 }
+
+    
