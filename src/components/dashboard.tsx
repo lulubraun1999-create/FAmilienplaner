@@ -74,7 +74,7 @@ export default function Dashboard() {
         try {
             const populateSnap = await getDoc(populateRef);
 
-            if (populateSnap.exists() || familyName !== 'Familie-Butz-Braun') {
+            if (populateSnap.exists()) {
                 setIsDataPopulated(true);
                 return;
             }
@@ -315,38 +315,19 @@ export default function Dashboard() {
     }
   };
 
- const handleUpdateDogPlanItem = (item: DogPlanItem) => {
+ const handleUpdateDogPlanItem = (item: DogPlanItem, isNew: boolean) => {
     if (dogPlanRef) {
-        if (item.id && item.id.startsWith('d_')) {
-            const findQuery = query(dogPlanRef, where("day", "==", item.day), where("timeOfDay", "==", item.timeOfDay));
-            getDocs(findQuery).then(snapshot => {
-                if (!snapshot.empty) {
-                    const existingDoc = snapshot.docs[0];
-                    const itemDocRef = doc(dogPlanRef, existingDoc.id);
-                    const updateData = { assignedTo: item.assignedTo };
-                    updateDoc(itemDocRef, updateData).catch(e => {
-                        errorEmitter.emit('permission-error', new FirestorePermissionError({
-                            path: itemDocRef.path,
-                            operation: 'update',
-                            requestResourceData: updateData
-                        }));
-                    });
-                } else if (item.assignedTo) {
-                    const { id, ...newItemData } = item;
-                    addDoc(dogPlanRef, newItemData).catch(e => {
-                        errorEmitter.emit('permission-error', new FirestorePermissionError({
-                            path: dogPlanRef.path,
-                            operation: 'create',
-                            requestResourceData: newItemData
-                        }));
-                    });
-                }
-            }).catch(e => {
-                errorEmitter.emit('permission-error', new FirestorePermissionError({
-                    path: dogPlanRef.path,
-                    operation: 'list',
-                }));
-            });
+        if (isNew) {
+            const { id, ...newItemData } = item;
+             if (item.assignedTo) {
+                addDoc(dogPlanRef, newItemData).catch(e => {
+                    errorEmitter.emit('permission-error', new FirestorePermissionError({
+                        path: dogPlanRef.path,
+                        operation: 'create',
+                        requestResourceData: newItemData
+                    }));
+                });
+             }
         } else if (item.id) {
             const itemDocRef = doc(dogPlanRef, item.id);
             if (item.assignedTo) {
