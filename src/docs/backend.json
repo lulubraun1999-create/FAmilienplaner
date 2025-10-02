@@ -30,25 +30,6 @@
         "familyName"
       ]
     },
-    "Family": {
-      "title": "Family",
-      "type": "object",
-      "description": "Represents a family unit.",
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "The display name of the family."
-        },
-        "memberIds": {
-          "type": "array",
-          "description": "An array of user IDs belonging to this family.",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "required": ["name", "memberIds"]
-    },
     "CalendarEvent": {
       "title": "CalendarEvent",
       "type": "object",
@@ -210,12 +191,6 @@
     ]
   },
   "firestore": {
-    "/families/{familyName}": {
-      "schema": {
-        "$ref": "#/entities/Family"
-      },
-      "description": "Stores documents representing each family and its members."
-    },
     "/families/{familyName}/events/{eventId}": {
       "schema": {
         "$ref": "#/entities/CalendarEvent"

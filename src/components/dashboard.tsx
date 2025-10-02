@@ -9,7 +9,7 @@ import CalendarView from './calendar-view';
 import TaskList from './task-list';
 import ShoppingList from './shopping-list';
 import DogPlan from './dog-plan';
-import { initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems, initialLocations, calendarGroups } from '@/lib/data';
+import { initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems, initialLocations, calendarGroups, initialFamilyMembers } from '@/lib/data';
 import type { CalendarGroup, Event, Task, ShoppingListItem, FamilyMember, DogPlanItem, Location, Family } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser, useDoc, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch, setDoc, getDocs, query, where, getDoc } from 'firebase/firestore';
@@ -40,33 +40,8 @@ export default function Dashboard() {
   const [calendarView, setCalendarView] = useState<CalendarViewType>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
   
-  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
-
-  const familyDocRef = useMemoFirebase(() => (firestore && familyName ? doc(firestore, 'families', familyName) : null), [firestore, familyName]);
-  const { data: familyData } = useDoc<Family>(familyDocRef);
-
-  useEffect(() => {
-    const fetchFamilyMembers = async () => {
-      if (firestore && familyData?.memberIds) {
-        try {
-          const memberPromises = familyData.memberIds.map(id => getDoc(doc(firestore, 'users', id)));
-          const memberSnapshots = await Promise.all(memberPromises);
-          const members = memberSnapshots
-            .filter(snap => snap.exists())
-            .map(snap => ({ id: snap.id, ...snap.data() } as FamilyMember));
-          setFamilyMembers(members);
-        } catch (e: any) {
-            console.error("Error fetching family members' profiles", e);
-            const permissionError = new FirestorePermissionError({
-              path: 'users',
-              operation: 'list',
-            });
-            errorEmitter.emit('permission-error', permissionError);
-        }
-      }
-    };
-    fetchFamilyMembers();
-  }, [firestore, familyData]);
+  // Temporarily use static family members to fix permission issues
+  const familyMembers = useMemo(() => initialFamilyMembers, []);
 
 
   const familyBasedRef = (collectionName: string) => useMemoFirebase(() => (firestore && familyName ? collection(firestore, `families/${familyName}/${collectionName}`) : null), [firestore, familyName]);
@@ -139,9 +114,9 @@ export default function Dashboard() {
   }, [firestore, user, familyName, eventsLoading, isDataPopulated, eventsData]);
 
   const me = useMemo(() => {
-    // Try to find user by UID first, then by email as a fallback for initial load
-    return familyMembers.find(m => m.id === user?.uid) || familyMembers.find(m => m.email === user?.email);
-  }, [familyMembers, user]);
+    // The first user in the static list is considered "me" for now
+    return familyMembers.find(m => m.id === 'me');
+  }, [familyMembers]);
   
   const localEvents = useMemo(() => {
     if (!eventsData) return [];
@@ -167,7 +142,7 @@ export default function Dashboard() {
         // For new events, pre-fill the current user as a participant
         const newEventTemplate: Partial<Event> = {
             title: '',
-            participants: [user.uid], // Set current user as default participant
+            participants: ['me'], // Use static 'me' id
             allDay: false,
             start: new Date(),
             end: new Date(new Date().getTime() + 60 * 60 * 1000), // 1 hour later
@@ -301,14 +276,14 @@ export default function Dashboard() {
       return { id: 'all', name: 'Gesamte Familie', members: familyMembers.map(m => m.id) };
     }
     if (selectedCalendarId === 'my_calendar') {
-      const meMember = familyMembers.find(m => m.id === user?.uid);
+      const meMember = familyMembers.find(m => m.id === 'me'); // Use static id
       return { id: 'my_calendar', name: 'Mein Kalender', members: meMember ? [meMember.id] : [] };
     }
     return calendarGroups.find(g => g.id === selectedCalendarId);
-  }, [selectedCalendarId, familyMembers, user]);
+  }, [selectedCalendarId, familyMembers]);
 
   const filteredData = useMemo(() => {
-    const currentUserId = user?.uid;
+    const currentUserId = 'me'; // Use static ID
 
     if (selectedCalendarId === 'all') {
         return { events: localEvents, tasks: localTasks, shoppingItems: localShoppingItems, dogPlanItems: localDogPlanItems, members: familyMembers };
@@ -345,7 +320,7 @@ export default function Dashboard() {
       dogPlanItems: groupDogPlanItems,
       members: membersInGroup
     };
-  }, [selectedCalendarId, currentGroup, localEvents, localTasks, localShoppingItems, localDogPlanItems, familyMembers, user]);
+  }, [selectedCalendarId, currentGroup, localEvents, localTasks, localShoppingItems, localDogPlanItems, familyMembers]);
 
 
   return (

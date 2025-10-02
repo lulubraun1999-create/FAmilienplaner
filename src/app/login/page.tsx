@@ -11,7 +11,7 @@ import { useAuth, useFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { CalendarDays, Loader2 } from 'lucide-react';
-import { doc, setDoc, arrayUnion } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // Data for families and their registration codes.
@@ -94,13 +94,6 @@ export default function LoginPage() {
             email: registerEmail,
             familyName: selectedFamily.id
         });
-
-        // Add user to the family document
-        const familyDocRef = doc(firestore, 'families', selectedFamily.id);
-        await setDoc(familyDocRef, { 
-            name: selectedFamily.name,
-            memberIds: arrayUnion(user.uid) 
-        }, { merge: true });
       }
       
       router.push('/');
