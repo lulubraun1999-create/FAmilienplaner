@@ -7,11 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { useAuth, useFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useAuth } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Music, Loader2 } from 'lucide-react';
-import { doc, setDoc } from 'firebase/firestore';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { familyData } from '@/lib/family-data';
 
@@ -26,7 +25,6 @@ export default function LoginPage() {
   const [selectedFamilyId, setSelectedFamilyId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const { firestore } = useFirebase();
   const auth = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -77,28 +75,6 @@ export default function LoginPage() {
       const user = userCredential.user;
 
       await updateProfile(user, { displayName: registerName });
-      
-      if (firestore) {
-        const userDocRef = doc(firestore, 'users', user.uid);
-        // Find the matching member from static data to get the correct static ID
-        const staticUser = selectedFamily.members.find(m => m.email === registerEmail);
-        const staticId = staticUser ? staticUser.id : user.uid; // Fallback to UID if not found
-
-        const userData = {
-            id: staticId, // Use the static ID from family-data.ts
-            name: registerName,
-            email: registerEmail,
-            familyName: selectedFamily.id
-        };
-        
-        setDoc(userDocRef, userData).catch(e => {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: userDocRef.path,
-                operation: 'create',
-                requestResourceData: userData
-            }));
-        });
-      }
       
       router.push('/');
     } catch (error: any) {

@@ -7,7 +7,7 @@ import type { CalendarGroup, FamilyMember } from '@/lib/types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import ProfileDialog from '../profile-dialog';
 import { getInitials } from '@/lib/utils';
-import { useAuth } from '@/firebase';
+import { useAuth, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 
@@ -23,7 +23,11 @@ interface AppSidebarProps {
 export default function AppSidebar({ calendarGroups, selectedCalendarId, onCalendarChange, familyMembers, onUpdateProfile, me }: AppSidebarProps) {
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
   const auth = useAuth();
+  const { user } = useUser();
   const router = useRouter();
+  
+  const displayName = me?.name || user?.displayName || "Profil";
+
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -88,11 +92,11 @@ export default function AppSidebar({ calendarGroups, selectedCalendarId, onCalen
           <button className="flex w-full items-center gap-3 rounded-lg p-2 transition-colors hover:bg-secondary" onClick={() => setIsProfileDialogOpen(true)}>
               {me && (
                   <Avatar className="h-10 w-10">
-                      <AvatarFallback>{getInitials(me.name)}</AvatarFallback>
+                      <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
                   </Avatar>
               )}
               <div className="flex-1 text-left">
-                  <p className="text-sm font-semibold">{me?.name || "Profil laden..."}</p>
+                  <p className="text-sm font-semibold">{displayName}</p>
                   <p className="text-xs text-muted-foreground">Mein Profil</p>
               </div>
           </button>

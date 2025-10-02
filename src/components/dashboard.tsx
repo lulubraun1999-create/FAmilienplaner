@@ -11,7 +11,7 @@ import ShoppingList from './shopping-list';
 import DogPlan from './dog-plan';
 import { initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems, initialLocations } from '@/lib/data';
 import type { CalendarGroup, Event, Task, ShoppingListItem, FamilyMember, DogPlanItem, Location } from '@/lib/types';
-import { useFirebase, useCollection, useMemoFirebase, useUser, useDoc } from '@/firebase';
+import { useFirebase, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { errorEmitter, FirestorePermissionError } from '@/firebase';
 import EventDialog from './event-dialog';
@@ -19,7 +19,7 @@ import { Button } from './ui/button';
 import WeekView from './week-view';
 import DayView from './day-view';
 import TaskDialog from './task-dialog';
-import { familyData } from '@/lib/family-data';
+import { familyData, allFamilyMembers } from '@/lib/family-data';
 
 type CalendarViewType = 'month' | 'week' | 'day';
 
@@ -28,16 +28,18 @@ export default function Dashboard() {
   const { firestore } = useFirebase();
   const { user } = useUser();
   
-  const userDocRef = useMemoFirebase(() => (firestore && user?.uid ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
-  const { data: userData } = useDoc<FamilyMember>(userDocRef);
-  const familyName = userData?.familyName;
-  
-  const familyMembers = useMemo(() => {
-    if (!familyName) return [];
-    const familyInfo = familyData.find(f => f.id === familyName);
-    return familyInfo?.members || [];
-  }, [familyName]);
+  const { me, familyName, familyMembers } = useMemo(() => {
+    if (!user?.email) return { me: undefined, familyName: undefined, familyMembers: [] };
+    
+    const memberInfo = allFamilyMembers.find(m => m.email === user.email);
+    if (!memberInfo) return { me: undefined, familyName: undefined, familyMembers: [] };
+    
+    const familyInfo = familyData.find(f => f.members.some(m => m.id === memberInfo.id));
+    const familyMembers = familyInfo?.members || [];
+    const familyName = familyInfo?.id;
 
+    return { me: memberInfo, familyName, familyMembers };
+  }, [user]);
 
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | undefined>(undefined);
@@ -111,13 +113,6 @@ export default function Dashboard() {
       populateFirestore();
     }
   }, [firestore, user, familyName, eventsLoading, isDataPopulated, eventsData]);
-
-  const me = useMemo(() => {
-    // We use the static ID from the login process which is now stored in the user document.
-    const staticId = userData?.id;
-    if (!staticId) return undefined;
-    return familyMembers?.find(m => m.id === staticId);
-  }, [familyMembers, userData]);
 
   const calendarGroups: CalendarGroup[] = useMemo(() => {
     // Generate groups from the static family data
@@ -357,23 +352,16 @@ export default function Dashboard() {
   };
   
   const handleUpdateProfile = (updatedMember: FamilyMember) => {
-     if (firestore && user) {
-      const userDocRef = doc(firestore, 'users', user.uid);
-      const updateData = { name: updatedMember.name };
-      updateDoc(userDocRef, updateData).catch(e => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: userDocRef.path,
-            operation: 'update',
-            requestResourceData: updateData
-        }));
-      });
-    }
+     if (user) {
+        // Only update the display name in Firebase Auth, as we don't have a user document
+        updateProfile(user, { displayName: updatedMember.name });
+        // The local state will update automatically via the user object listener
+     }
   };
 
   const currentGroup = useMemo(() => {
-    const members = familyMembers || [];
     if (selectedCalendarId === 'all') {
-      return { id: 'all', name: 'Gesamte Familie', members: members.map(m => m.id) };
+      return { id: 'all', name: 'Gesamte Familie', members: familyMembers.map(m => m.id) };
     }
     if (selectedCalendarId === 'my_calendar') {
       return { id: 'my_calendar', name: 'Mein Kalender', members: me ? [me.id] : [] };
@@ -382,10 +370,8 @@ export default function Dashboard() {
   }, [selectedCalendarId, familyMembers, me, calendarGroups]);
 
   const filteredData = useMemo(() => {
-    const members = familyMembers || [];
-
     if (selectedCalendarId === 'all' || !currentGroup) {
-        return { events: localEvents, tasks: localTasks, shoppingItems: localShoppingItems, dogPlanItems: localDogPlanItems, members: members };
+        return { events: localEvents, tasks: localTasks, shoppingItems: localShoppingItems, dogPlanItems: localDogPlanItems, members: familyMembers };
     }
     
     if (selectedCalendarId === 'my_calendar') {
@@ -394,7 +380,7 @@ export default function Dashboard() {
         const myTasks = localTasks.filter(task => task.assignedTo === myUserId);
         const myShoppingItems = localShoppingItems.filter(item => item.assignedTo === myUserId);
         const myDogPlanItems = localDogPlanItems.filter(item => item.assignedTo === myUserId);
-        const meMember = members.find(m => m.id === myUserId);
+        const meMember = familyMembers.find(m => m.id === myUserId);
 
         return {
             events: myEvents,
@@ -411,7 +397,7 @@ export default function Dashboard() {
     const groupTasks = localTasks.filter(task => memberIdsInGroup.has(task.assignedTo));
     const groupShoppingItems = localShoppingItems; 
     const groupDogPlanItems = localDogPlanItems.filter(item => item.assignedTo && memberIdsInGroup.has(item.assignedTo));
-    const membersInGroup = members.filter(m => memberIdsInGroup.has(m.id));
+    const membersInGroup = familyMembers.filter(m => memberIdsInGroup.has(m.id));
 
     return {
       events: groupEvents,
@@ -430,7 +416,7 @@ export default function Dashboard() {
           calendarGroups={calendarGroups}
           selectedCalendarId={selectedCalendarId}
           onCalendarChange={setSelectedCalendarId}
-          familyMembers={familyMembers || []}
+          familyMembers={familyMembers}
           onUpdateProfile={handleUpdateProfile}
           me={me}
         />
@@ -506,7 +492,7 @@ export default function Dashboard() {
               <TabsContent value="tasks" className="mt-4">
                 <TaskList 
                     tasks={filteredData.tasks} 
-                    members={familyMembers || []}
+                    members={familyMembers}
                     onTaskClick={handleOpenTaskDialog}
                     onNewTaskClick={() => handleOpenTaskDialog()}
                     onUpdateTask={handleUpdateTask}
@@ -515,7 +501,7 @@ export default function Dashboard() {
               <TabsContent value="shopping" className="mt-4">
                 <ShoppingList 
                     items={filteredData.shoppingItems} 
-                    members={familyMembers || []}
+                    members={familyMembers}
                     onAddItem={handleAddShoppingItem}
                     onUpdateItem={handleUpdateShoppingItem}
                     onDeleteItem={handleDeleteShoppingItem}
@@ -523,7 +509,7 @@ export default function Dashboard() {
                 />
               </TabsContent>
               <TabsContent value="dog-plan" className="mt-4">
-                <DogPlan items={localDogPlanItems} members={familyMembers || []} onUpdateItem={handleUpdateDogPlanItem} />
+                <DogPlan items={localDogPlanItems} members={familyMembers} onUpdateItem={handleUpdateDogPlanItem} />
               </TabsContent>
             </Tabs>
           </main>
@@ -535,7 +521,7 @@ export default function Dashboard() {
         onSave={handleSaveEvent}
         onDelete={handleDeleteEvent}
         event={selectedEvent}
-        allFamilyMembers={familyMembers || []}
+        allFamilyMembers={familyMembers}
         calendarGroups={[{id: 'all', name: 'Alle', members: (familyMembers || []).map(m => m.id)}, ...calendarGroups]}
         locations={localLocations}
         onAddLocation={handleAddLocation}
@@ -546,7 +532,7 @@ export default function Dashboard() {
         onSave={handleSaveTask}
         onDelete={handleDeleteTask}
         task={selectedTask}
-        familyMembers={familyMembers || []}
+        familyMembers={familyMembers}
       />
     </>
   );

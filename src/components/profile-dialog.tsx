@@ -15,6 +15,8 @@ import { Label } from './ui/label';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import type { FamilyMember } from '@/lib/types';
 import { getInitials } from '@/lib/utils';
+import { useAuth } from '@/firebase';
+import { updateProfile } from 'firebase/auth';
 
 interface ProfileDialogProps {
   isOpen: boolean;
@@ -25,6 +27,7 @@ interface ProfileDialogProps {
 
 export default function ProfileDialog({ isOpen, setIsOpen, onSave, member }: ProfileDialogProps) {
   const [name, setName] = useState(member.name);
+  const auth = useAuth();
 
   useEffect(() => {
     if (isOpen) {
@@ -33,10 +36,20 @@ export default function ProfileDialog({ isOpen, setIsOpen, onSave, member }: Pro
   }, [isOpen, member]);
 
   const handleSave = () => {
+    // Optimistically update the local state via onSave
     onSave({
       ...member,
       name,
     });
+    
+    // Update the profile in Firebase Auth
+    if (auth.currentUser) {
+      updateProfile(auth.currentUser, { displayName: name }).catch((error) => {
+        // Handle potential errors, e.g., show a toast notification
+        console.error("Error updating profile: ", error);
+      });
+    }
+    
     setIsOpen(false);
   };
 
