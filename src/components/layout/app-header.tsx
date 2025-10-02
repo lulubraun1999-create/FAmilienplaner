@@ -3,7 +3,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Plus, Bell, RefreshCw, Moon, Sun } from 'lucide-react';
-import type { FamilyMember, Event, CalendarGroup } from '@/lib/types';
+import type { FamilyMember, Event, CalendarGroup, Location } from '@/lib/types';
 import EventDialog from '../event-dialog';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -14,10 +14,12 @@ import { calendarGroups, initialFamilyMembers } from '@/lib/data';
 interface AppHeaderProps {
   groupName: string;
   groupMembers: FamilyMember[];
-  onAddEvent: (event: Omit<Event, 'id' | 'calendarId'>) => void;
+  onAddEvent: (event: Omit<Event, 'id'>) => void;
+  locations: Location[];
+  onAddLocation: (location: Omit<Location, 'id'>) => Promise<string>;
 }
 
-export default function AppHeader({ groupName, groupMembers, onAddEvent }: AppHeaderProps) {
+export default function AppHeader({ groupName, groupMembers, onAddEvent, locations, onAddLocation }: AppHeaderProps) {
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
   const { toast } = useToast();
   const { setTheme } = useTheme();
@@ -84,6 +86,8 @@ export default function AppHeader({ groupName, groupMembers, onAddEvent }: AppHe
         onSave={onAddEvent}
         allFamilyMembers={initialFamilyMembers}
         calendarGroups={[{id: 'all', name: 'Alle', members: initialFamilyMembers.map(m => m.id)}, ...calendarGroups]}
+        locations={locations}
+        onAddLocation={onAddLocation}
       />
     </>
   );

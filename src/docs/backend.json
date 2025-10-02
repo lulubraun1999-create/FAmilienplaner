@@ -1,0 +1,216 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the Familienplaner application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the user.",
+          "format": "email"
+        },
+        "familyName": {
+          "type": "string",
+          "description": "The name of the family this user belongs to."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "email",
+        "familyName"
+      ]
+    },
+    "CalendarEvent": {
+      "title": "CalendarEvent",
+      "type": "object",
+      "description": "Represents an event in the calendar.",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The title of the event."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the event."
+        },
+        "start": {
+          "type": "string",
+          "description": "The start time of the event.",
+          "format": "date-time"
+        },
+        "end": {
+          "type": "string",
+          "description": "The end time of the event.",
+          "format": "date-time"
+        },
+        "allDay": {
+          "type": "boolean",
+          "description": "Indicates if the event is an all-day event."
+        },
+        "locationId": {
+          "type": "string",
+          "description": "Reference to Location. The location of the event."
+        },
+        "participants": {
+          "type": "array",
+          "description": "References to Users. The users who are attending the event.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "title",
+        "start",
+        "end"
+      ]
+    },
+    "Task": {
+      "title": "Task",
+      "type": "object",
+      "description": "Represents a task assigned to a user.",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The title of the task."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the task."
+        },
+        "dueDate": {
+          "type": "string",
+          "description": "The due date of the task.",
+          "format": "date-time"
+        },
+        "priority": {
+          "type": "string",
+          "description": "The priority level of the task (e.g., high, medium, low)."
+        },
+        "assignedTo": {
+          "type": "string",
+          "description": "Reference to User. The user to whom the task is assigned."
+        },
+        "completed": {
+          "type": "boolean",
+          "description": "Indicates whether the task is completed."
+        }
+      },
+      "required": [
+        "title",
+        "dueDate",
+        "priority",
+        "assignedTo",
+        "completed"
+      ]
+    },
+    "ShoppingListItem": {
+      "title": "ShoppingListItem",
+      "type": "object",
+      "description": "Represents an item on the shopping list.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the item."
+        },
+        "addedBy": {
+          "type": "string",
+          "description": "Reference to User. The user who added the item to the list."
+        },
+        "purchased": {
+          "type": "boolean",
+          "description": "Indicates whether the item has been purchased."
+        }
+      },
+      "required": [
+        "name",
+        "addedBy",
+        "purchased"
+      ]
+    },
+    "DogPlanItem": {
+      "title": "DogPlanItem",
+      "type": "object",
+      "description": "Represents an item in the dog plan.",
+      "properties": {
+        "day": {
+          "type": "string"
+        },
+        "timeOfDay": {
+          "type": "string"
+        },
+        "assignedTo": {
+          "type": "string"
+        }
+      },
+      "required": ["day", "timeOfDay", "assignedTo"]
+    },
+    "Location": {
+      "title": "Location",
+      "type": "object",
+      "description": "Represents a physical location.",
+      "properties": {
+        "name": { "type": "string" },
+        "street": { "type": "string" },
+        "housenumber": { "type": "string" },
+        "postalcode": { "type": "string" },
+        "city": { "type": "string" }
+      },
+      "required": ["name", "street", "housenumber", "postalcode", "city"]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "/families/{familyName}/events/{eventId}": {
+      "schema": {
+        "$ref": "#/entities/CalendarEvent"
+      },
+      "description": "Stores calendar events for each family."
+    },
+    "/families/{familyName}/tasks/{taskId}": {
+      "schema": {
+        "$ref": "#/entities/Task"
+      },
+      "description": "Stores tasks for each family."
+    },
+    "/families/{familyName}/shoppingListItems/{shoppingListItemId}": {
+      "schema": {
+        "$ref": "#/entities/ShoppingListItem"
+      },
+      "description": "Stores shopping list items for each family."
+    },
+    "/families/{familyName}/dogPlan/{dogPlanItemId}": {
+        "schema": {
+            "$ref": "#/entities/DogPlanItem"
+        },
+        "description": "Stores dog plan items for each family."
+    },
+    "/families/{familyName}/locations/{locationId}": {
+        "schema": {
+            "$ref": "#/entities/Location"
+        },
+        "description": "Stores reusable locations for a family."
+    },
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/User"
+      },
+      "description": "Stores user profiles."
+    }
+  }
+}

@@ -15,6 +15,7 @@ export type CalendarGroup = {
 
 export type Location = {
     id: string;
+    name: string;
     street: string;
     housenumber: string;
     postalcode: string;
@@ -27,7 +28,7 @@ export type Event = {
   start: Timestamp | Date;
   end: Timestamp | Date;
   allDay?: boolean;
-  location?: string;
+  locationId?: string;
   description?: string;
   participants: readonly FamilyMember['id'][];
 };

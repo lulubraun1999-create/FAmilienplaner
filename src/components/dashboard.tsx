@@ -9,10 +9,10 @@ import CalendarView from './calendar-view';
 import TaskList from './task-list';
 import ShoppingList from './shopping-list';
 import DogPlan from './dog-plan';
-import { calendarGroups, initialFamilyMembers, initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems } from '@/lib/data';
-import type { CalendarGroup, Event, Task, ShoppingListItem, FamilyMember, DogPlanItem } from '@/lib/types';
+import { calendarGroups, initialFamilyMembers, initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems, initialLocations } from '@/lib/data';
+import type { CalendarGroup, Event, Task, ShoppingListItem, FamilyMember, DogPlanItem, Location } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc, writeBatch, getDocs } from 'firebase/firestore';
+import { collection, query, where, doc, writeBatch, getDocs, addDoc } from 'firebase/firestore';
 
 export default function Dashboard() {
   const [selectedCalendarId, setSelectedCalendarId] = useState('all');
@@ -25,11 +25,13 @@ export default function Dashboard() {
   const tasksRef = useMemoFirebase(() => firestore ? collection(firestore, `families/${familyName}/tasks`) : null, [firestore, familyName]);
   const shoppingListRef = useMemoFirebase(() => firestore ? collection(firestore, `families/${familyName}/shoppingListItems`) : null, [firestore, familyName]);
   const dogPlanRef = useMemoFirebase(() => firestore ? collection(firestore, `families/${familyName}/dogPlan`) : null, [firestore, familyName]);
+  const locationsRef = useMemoFirebase(() => firestore ? collection(firestore, `families/${familyName}/locations`) : null, [firestore, familyName]);
   
   const { data: eventsData, isLoading: eventsLoading } = useCollection<Event>(eventsRef);
   const { data: tasksData, isLoading: tasksLoading } = useCollection<Task>(tasksRef);
   const { data: shoppingListData, isLoading: shoppingLoading } = useCollection<ShoppingListItem>(shoppingListRef);
   const { data: dogPlanData, isLoading: dogPlanLoading } = useCollection<DogPlanItem>(dogPlanRef);
+  const { data: locationsData, isLoading: locationsLoading } = useCollection<Location>(locationsRef);
 
 
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>(initialFamilyMembers);
@@ -37,14 +39,16 @@ export default function Dashboard() {
   const [localTasks, setLocalTasks] = useState<Task[]>([]);
   const [localShoppingItems, setLocalShoppingItems] = useState<ShoppingListItem[]>([]);
   const [localDogPlanItems, setLocalDogPlanItems] = useState<DogPlanItem[]>([]);
+  const [localLocations, setLocalLocations] = useState<Location[]>([]);
 
   useEffect(() => {
     if (firestore && familyName) {
-      const collections = {
+      const collections: { [key: string]: { ref: any; data: any[] } } = {
         events: { ref: eventsRef, data: initialEvents },
         tasks: { ref: tasksRef, data: initialTasks },
         shoppingListItems: { ref: shoppingListRef, data: initialShoppingListItems },
         dogPlan: { ref: dogPlanRef, data: initialDogPlanItems },
+        locations: { ref: locationsRef, data: initialLocations },
       };
   
       const populateFirestore = async () => {
@@ -77,7 +81,7 @@ export default function Dashboard() {
   
       populateFirestore();
     }
-  }, [firestore, familyName, eventsRef, tasksRef, shoppingListRef, dogPlanRef]);
+  }, [firestore, familyName, eventsRef, tasksRef, shoppingListRef, dogPlanRef, locationsRef]);
 
 
   React.useEffect(() => {
@@ -96,9 +100,23 @@ export default function Dashboard() {
     if (dogPlanData) setLocalDogPlanItems(dogPlanData);
   }, [dogPlanData]);
 
+  React.useEffect(() => {
+    if (locationsData) setLocalLocations(locationsData);
+  }, [locationsData]);
 
-  const handleAddEvent = (newEvent: Omit<Event, 'id' | 'calendarId'>) => {
-    // This will be replaced with firebase logic
+
+  const handleAddEvent = (newEvent: Omit<Event, 'id'>) => {
+    if (eventsRef) {
+      addDoc(eventsRef, newEvent);
+    }
+  };
+  
+  const handleAddLocation = async (newLocation: Omit<Location, 'id'>): Promise<string> => {
+    if (locationsRef) {
+      const docRef = await addDoc(locationsRef, newLocation);
+      return docRef.id;
+    }
+    return '';
   };
   
   const handleUpdateProfile = (updatedMember: FamilyMember) => {
@@ -176,6 +194,8 @@ export default function Dashboard() {
           groupName={currentGroup?.name || 'Familienplaner'}
           groupMembers={filteredData.members}
           onAddEvent={handleAddEvent}
+          locations={localLocations}
+          onAddLocation={handleAddLocation}
         />
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           <Tabs defaultValue="calendar" className="h-full">
@@ -198,7 +218,7 @@ export default function Dashboard() {
               </TabsTrigger>
             </TabsList>
             <TabsContent value="calendar" className="mt-4 rounded-lg">
-              <CalendarView events={filteredData.events} />
+              <CalendarView events={filteredData.events} locations={localLocations} />
             </TabsContent>
             <TabsContent value="tasks" className="mt-4">
               <TaskList tasks={filteredData.tasks} members={familyMembers} />

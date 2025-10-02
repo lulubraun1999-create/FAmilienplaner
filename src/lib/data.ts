@@ -1,5 +1,5 @@
 import { PlaceHolderImages } from './placeholder-images';
-import type { FamilyMember, CalendarGroup, Event, Task, ShoppingListItem, DogPlanItem } from './types';
+import type { FamilyMember, CalendarGroup, Event, Task, ShoppingListItem, DogPlanItem, Location } from './types';
 import { Timestamp } from 'firebase/firestore';
 
 const findImage = (id: string) => {
@@ -31,37 +31,35 @@ tomorrow.setDate(tomorrow.getDate() + 1);
 const nextWeek = new Date(today);
 nextWeek.setDate(nextWeek.getDate() + 7);
 
+export const initialLocations: Omit<Location, 'id'>[] = [
+    { name: 'Sportplatz', street: 'Am Sportpark', housenumber: '1', postalcode: '12345', city: 'Musterstadt' },
+    { name: 'Dr. Smile', street: 'Hauptstraße', housenumber: '10', postalcode: '54321', city: 'Beispielburg' },
+    { name: 'Schule', street: 'Schulweg', housenumber: '2', postalcode: '12345', city: 'Musterstadt' },
+];
 
-export const initialEvents: Event[] = [
+export const initialEvents: Omit<Event, 'id' | 'locationId'>[] = [
   {
-    id: 'e1',
     title: 'Fußballtraining',
     start: new Date(new Date(today).setHours(17, 0, 0, 0)),
     end: new Date(new Date(today).setHours(18, 30, 0, 0)),
-    location: 'Sportplatz',
     participants: ['sister'],
   },
   {
-    id: 'e2',
     title: 'Zahnarzttermin',
     start: new Date(new Date(tomorrow).setHours(10, 0, 0, 0)),
     end: new Date(new Date(tomorrow).setHours(10, 30, 0, 0)),
-    location: 'Dr. Smile',
     participants: ['me'],
   },
   {
-    id: 'e3',
     title: 'Kaffeeklatsch',
     start: new Date(new Date(tomorrow).setHours(15, 0, 0, 0)),
     end: new Date(new Date(tomorrow).setHours(17, 0, 0, 0)),
     participants: ['grandma', 'grandpa'],
   },
    {
-    id: 'e4',
     title: 'Elternabend',
     start: new Date(new Date(nextWeek).setHours(19, 0, 0, 0)),
     end: new Date(new Date(nextWeek).setHours(20, 0, 0, 0)),
-    location: 'Schule',
     participants: ['dad', 'mom'],
   },
 ];

@@ -18,7 +18,7 @@ import { CalendarIcon, Clock, Sparkles, Loader2, Users, FileText, MapPin } from 
 import { format, set, startOfDay, endOfDay, differenceInMinutes, isAfter } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import type { FamilyMember, Event, CalendarGroup } from '@/lib/types';
+import type { FamilyMember, Event, CalendarGroup, Location } from '@/lib/types';
 import { getAISuggestions } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -26,24 +26,27 @@ import { Textarea } from './ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Checkbox } from './ui/checkbox';
 import { Separator } from './ui/separator';
+import LocationDialog from './location-dialog';
 
 interface EventDialogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  onSave: (event: Omit<Event, 'id' | 'calendarId'>) => void;
+  onSave: (event: Omit<Event, 'id'>) => void;
   event?: Event;
   allFamilyMembers: FamilyMember[];
   calendarGroups: CalendarGroup[];
+  locations: Location[];
+  onAddLocation: (location: Omit<Location, 'id'>) => Promise<string>;
 }
 
-export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamilyMembers, calendarGroups }: EventDialogProps) {
+export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamilyMembers, calendarGroups, locations, onAddLocation }: EventDialogProps) {
   const [title, setTitle] = useState(event?.title || '');
-  const [startDate, setStartDate] = useState<Date | undefined>(event?.start || new Date());
-  const [endDate, setEndDate] = useState<Date | undefined>(event?.end || event?.start || new Date());
-  const [startTime, setStartTime] = useState(event ? format(event.start, 'HH:mm') : '10:00');
-  const [endTime, setEndTime] = useState(event ? format(event.end, 'HH:mm') : '11:00');
+  const [startDate, setStartDate] = useState<Date | undefined>(event?.start ? new Date(event.start.toString()) : new Date());
+  const [endDate, setEndDate] = useState<Date | undefined>(event?.end ? new Date(event.end.toString()): new Date()));
+  const [startTime, setStartTime] = useState(event ? format(new Date(event.start.toString()), 'HH:mm') : '10:00');
+  const [endTime, setEndTime] = useState(event ? format(new Date(event.end.toString()), 'HH:mm') : '11:00');
   const [isAllDay, setIsAllDay] = useState(event?.allDay || false);
-  const [location, setLocation] = useState(event?.location || '');
+  const [locationId, setLocationId] = useState(event?.locationId || '');
   const [description, setDescription] = useState(event?.description || '');
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>(event?.participants || []);
   
@@ -51,6 +54,7 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamil
   const [suggestions, setSuggestions] = useState<Awaited<ReturnType<typeof getAISuggestions>>['suggestions']>([]);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
 
   const handleSave = () => {
     if (!title || !startDate || !endDate) return;
@@ -79,7 +83,7 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamil
       title,
       start: startDateTime,
       end: endDateTime,
-      location,
+      locationId: locationId,
       description,
       participants: selectedParticipants,
       allDay: isAllDay,
@@ -96,7 +100,7 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamil
       setStartTime('10:00');
       setEndTime('11:00');
       setIsAllDay(false);
-      setLocation('');
+      setLocationId('');
       setDescription('');
       setSelectedParticipants([]);
       setSuggestions([]);
@@ -105,12 +109,12 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamil
   useEffect(() => {
     if (event) {
       setTitle(event.title);
-      setStartDate(event.start);
-      setEndDate(event.end);
-      setStartTime(format(event.start, 'HH:mm'));
-      setEndTime(format(event.end, 'HH:mm'));
+      setStartDate(event.start ? new Date(event.start.toString()) : new Date());
+      setEndDate(event.end ? new Date(event.end.toString()) : new Date());
+      setStartTime(format(new Date(event.start.toString()), 'HH:mm'));
+      setEndTime(format(new Date(event.end.toString()), 'HH:mm'));
       setIsAllDay(event.allDay || false);
-      setLocation(event.location || '');
+      setLocationId(event.locationId || '');
       setDescription(event.description || '');
       setSelectedParticipants(event.participants);
     } else {
@@ -179,191 +183,203 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamil
     }
   }
 
+  const selectedLocationName = locations.find(l => l.id === locationId)?.name || "Ort auswählen";
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[625px]">
-        <DialogHeader>
-          <DialogTitle>{event ? 'Ereignis bearbeiten' : 'Neues Ereignis erstellen'}</DialogTitle>
-          <DialogDescription>
-            Fülle die Details für dein Ereignis aus. Klicke auf Speichern, wenn du fertig bist.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="title" className="text-right">Titel</Label>
-            <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} className="col-span-3" />
-          </div>
-          
-           
+    <>
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent className="sm:max-w-[625px]">
+          <DialogHeader>
+            <DialogTitle>{event ? 'Ereignis bearbeiten' : 'Neues Ereignis erstellen'}</DialogTitle>
+            <DialogDescription>
+              Fülle die Details für dein Ereignis aus. Klicke auf Speichern, wenn du fertig bist.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">{isAllDay ? 'Startdatum' : 'Von'}</Label>
-                <div className="col-span-3 grid grid-cols-2 gap-2">
-                    <Popover>
-                        <PopoverTrigger asChild>
-                        <Button variant={"outline"} className={cn("justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {startDate ? format(startDate, 'PPP', { locale: de }) : <span>Wähle ein Datum</span>}
-                        </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                        <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus />
-                        </PopoverContent>
-                    </Popover>
-                     {!isAllDay && (
-                        <div className="relative">
-                            <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="pl-9"/>
-                        </div>
-                     )}
-                </div>
+              <Label htmlFor="title" className="text-right">Titel</Label>
+              <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} className="col-span-3" />
             </div>
+            
+             
+              <div className="grid grid-cols-4 items-center gap-4">
+                  <Label className="text-right">{isAllDay ? 'Startdatum' : 'Von'}</Label>
+                  <div className="col-span-3 grid grid-cols-2 gap-2">
+                      <Popover>
+                          <PopoverTrigger asChild>
+                          <Button variant={"outline"} className={cn("justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {startDate ? format(startDate, 'PPP', { locale: de }) : <span>Wähle ein Datum</span>}
+                          </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0">
+                          <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus />
+                          </PopoverContent>
+                      </Popover>
+                       {!isAllDay && (
+                          <div className="relative">
+                              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="pl-9"/>
+                          </div>
+                       )}
+                  </div>
+              </div>
 
-            <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">{isAllDay ? 'Enddatum' : 'Bis'}</Label>
-                <div className="col-span-3 grid grid-cols-2 gap-2">
-                     <Popover>
-                        <PopoverTrigger asChild>
-                        <Button variant={"outline"} className={cn("justify-start text-left font-normal", !endDate && "text-muted-foreground")}>
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {endDate ? format(endDate, 'PPP', { locale: de }) : <span>Wähle ein Datum</span>}
-                        </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                        <Calendar mode="single" selected={endDate} onSelect={setEndDate} disabled={{ before: startDate }} initialFocus />
-                        </PopoverContent>
-                    </Popover>
-                     {!isAllDay && (
-                        <div className="relative">
-                            <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="pl-9"/>
-                        </div>
-                     )}
+              <div className="grid grid-cols-4 items-center gap-4">
+                  <Label className="text-right">{isAllDay ? 'Enddatum' : 'Bis'}</Label>
+                  <div className="col-span-3 grid grid-cols-2 gap-2">
+                       <Popover>
+                          <PopoverTrigger asChild>
+                          <Button variant={"outline"} className={cn("justify-start text-left font-normal", !endDate && "text-muted-foreground")}>
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {endDate ? format(endDate, 'PPP', { locale: de }) : <span>Wähle ein Datum</span>}
+                          </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0">
+                          <Calendar mode="single" selected={endDate} onSelect={setEndDate} disabled={{ before: startDate }} initialFocus />
+                          </PopoverContent>
+                      </Popover>
+                       {!isAllDay && (
+                          <div className="relative">
+                              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="pl-9"/>
+                          </div>
+                       )}
+                  </div>
+              </div>
+
+              <div className="grid grid-cols-4 items-center gap-4">
+                  <div/>
+                  <div className="col-span-3 flex items-center space-x-2">
+                    <Checkbox id="all-day" checked={isAllDay} onCheckedChange={(checked) => setIsAllDay(Boolean(checked))} />
+                    <label htmlFor="all-day" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                      Ganztägig
+                    </label>
+                  </div>
+              </div>
+
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="location" className="text-right flex items-center gap-2 justify-end">
+                  <MapPin className="h-4 w-4" />
+                  Ort
+                </Label>
+                <div className="col-span-3">
+                  <Button variant="outline" className="w-full justify-start text-left font-normal" onClick={() => setIsLocationDialogOpen(true)}>
+                    {selectedLocationName}
+                  </Button>
                 </div>
-            </div>
+              </div>
+              
 
-            <div className="grid grid-cols-4 items-center gap-4">
-                <div/>
-                <div className="col-span-3 flex items-center space-x-2">
-                  <Checkbox id="all-day" checked={isAllDay} onCheckedChange={(checked) => setIsAllDay(Boolean(checked))} />
-                  <label htmlFor="all-day" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                    Ganztägig
-                  </label>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="location" className="text-right flex items-center gap-2 justify-end">
-                <MapPin className="h-4 w-4" />
-                Ort
+            <div className="grid grid-cols-4 items-start gap-4">
+              <Label className="text-right pt-2 flex items-center gap-2 justify-end">
+                <Users className="h-4 w-4"/>
+                Teilnehmer
               </Label>
               <div className="col-span-3">
-                <Button variant="outline" className="w-full justify-start text-left font-normal">
-                  {location ? location : "Ort auswählen"}
-                </Button>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start text-left font-normal">
+                      <span className="truncate">
+                        {selectedParticipants.length > 0 
+                          ? selectedParticipants.map(id => allFamilyMembers.find(p => p.id === id)?.name).join(', ')
+                          : "Teilnehmer auswählen"}
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[300px] p-0">
+                    <div className="flex flex-col gap-1 p-2">
+                      {calendarGroups.map(group => (
+                        <React.Fragment key={group.id}>
+                          <Label className="flex items-center gap-2 p-2 rounded-md hover:bg-accent font-semibold">
+                            <Checkbox
+                              checked={group.members.every(id => selectedParticipants.includes(id))}
+                              onCheckedChange={() => toggleGroup(group.members)}
+                            />
+                            <span>{group.name}</span>
+                          </Label>
+                          <Separator />
+                        </React.Fragment>
+                      ))}
+                      {allFamilyMembers.map(p => (
+                        <Label key={p.id} className="flex items-center gap-2 p-2 rounded-md hover:bg-accent">
+                          <Checkbox 
+                            checked={selectedParticipants.includes(p.id)}
+                            onCheckedChange={() => toggleParticipant(p.id)}
+                          />
+                           <Avatar className="h-6 w-6">
+                            <AvatarImage src={p.avatar.imageUrl} alt={p.name} data-ai-hint={p.avatar.imageHint}/>
+                            <AvatarFallback>{p.name.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <span>{p.name}</span>
+                        </Label>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
             
-
-          <div className="grid grid-cols-4 items-start gap-4">
-            <Label className="text-right pt-2 flex items-center gap-2 justify-end">
-              <Users className="h-4 w-4"/>
-              Teilnehmer
-            </Label>
-            <div className="col-span-3">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left font-normal">
-                    <span className="truncate">
-                      {selectedParticipants.length > 0 
-                        ? selectedParticipants.map(id => allFamilyMembers.find(p => p.id === id)?.name).join(', ')
-                        : "Teilnehmer auswählen"}
-                    </span>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[300px] p-0">
-                  <div className="flex flex-col gap-1 p-2">
-                    {calendarGroups.map(group => (
-                      <React.Fragment key={group.id}>
-                        <Label className="flex items-center gap-2 p-2 rounded-md hover:bg-accent font-semibold">
-                          <Checkbox
-                            checked={group.members.every(id => selectedParticipants.includes(id))}
-                            onCheckedChange={() => toggleGroup(group.members)}
-                          />
-                          <span>{group.name}</span>
-                        </Label>
-                        <Separator />
-                      </React.Fragment>
-                    ))}
-                    {allFamilyMembers.map(p => (
-                      <Label key={p.id} className="flex items-center gap-2 p-2 rounded-md hover:bg-accent">
-                        <Checkbox 
-                          checked={selectedParticipants.includes(p.id)}
-                          onCheckedChange={() => toggleParticipant(p.id)}
-                        />
-                         <Avatar className="h-6 w-6">
-                          <AvatarImage src={p.avatar.imageUrl} alt={p.name} data-ai-hint={p.avatar.imageHint}/>
-                          <AvatarFallback>{p.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <span>{p.name}</span>
-                      </Label>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-4 items-start gap-4">
-            <Label htmlFor="description" className="text-right pt-2 flex items-center gap-2 justify-end">
-                <FileText className="h-4 w-4" />
-                Beschreibung
-            </Label>
-            <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} className="col-span-3" />
-          </div>
-
-          {!isAllDay && (
             <div className="grid grid-cols-4 items-start gap-4">
-                <Label className="text-right pt-2">KI-Vorschläge</Label>
-                <div className="col-span-3 space-y-2">
-                    <div className='grid grid-cols-2 gap-2'>
-                        <Select value={preferredTime} onValueChange={setPreferredTime}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Bevorzugte Zeit" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="morning">Morgens</SelectItem>
-                                <SelectItem value="afternoon">Nachmittags</SelectItem>
-                                <SelectItem value="evening">Abends</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <Button variant="outline" onClick={handleGetSuggestions} disabled={isPending}>
-                            {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                            Zeit vorschlagen
-                        </Button>
-                    </div>
-                    {suggestions && suggestions.length > 0 && (
-                        <div className="space-y-2 rounded-md border p-2">
-                        <Label className="text-xs text-muted-foreground">Vorschläge:</Label>
-                        <div className='flex flex-wrap gap-2'>
-                            {suggestions.map((s, i) => (
-                            <Button key={i} size="sm" variant="secondary" onClick={() => applySuggestion(s.startTime, s.endTime)}>
-                                {format(new Date(s.startTime), 'HH:mm')} - {format(new Date(s.endTime), 'HH:mm')}
-                            </Button>
-                            ))}
-                        </div>
-                        </div>
-                    )}
-                </div>
+              <Label htmlFor="description" className="text-right pt-2 flex items-center gap-2 justify-end">
+                  <FileText className="h-4 w-4" />
+                  Beschreibung
+              </Label>
+              <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} className="col-span-3" />
             </div>
-          )}
-        </div>
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Abbrechen</Button>
-          <Button type="submit" onClick={handleSave}>Speichern</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+
+            {!isAllDay && (
+              <div className="grid grid-cols-4 items-start gap-4">
+                  <Label className="text-right pt-2">KI-Vorschläge</Label>
+                  <div className="col-span-3 space-y-2">
+                      <div className='grid grid-cols-2 gap-2'>
+                          <Select value={preferredTime} onValueChange={setPreferredTime}>
+                              <SelectTrigger>
+                                  <SelectValue placeholder="Bevorzugte Zeit" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                  <SelectItem value="morning">Morgens</SelectItem>
+                                  <SelectItem value="afternoon">Nachmittags</SelectItem>
+                                  <SelectItem value="evening">Abends</SelectItem>
+                              </SelectContent>
+                          </Select>
+                          <Button variant="outline" onClick={handleGetSuggestions} disabled={isPending}>
+                              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                              Zeit vorschlagen
+                          </Button>
+                      </div>
+                      {suggestions && suggestions.length > 0 && (
+                          <div className="space-y-2 rounded-md border p-2">
+                          <Label className="text-xs text-muted-foreground">Vorschläge:</Label>
+                          <div className='flex flex-wrap gap-2'>
+                              {suggestions.map((s, i) => (
+                              <Button key={i} size="sm" variant="secondary" onClick={() => applySuggestion(s.startTime, s.endTime)}>
+                                  {format(new Date(s.startTime), 'HH:mm')} - {format(new Date(s.endTime), 'HH:mm')}
+                              </Button>
+                              ))}
+                          </div>
+                          </div>
+                      )}
+                  </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Abbrechen</Button>
+            <Button type="submit" onClick={handleSave}>Speichern</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <LocationDialog
+        isOpen={isLocationDialogOpen}
+        setIsOpen={setIsLocationDialogOpen}
+        locations={locations}
+        onAddLocation={onAddLocation}
+        onSelectLocation={(locationId) => {
+          setLocationId(locationId);
+          setIsLocationDialogOpen(false);
+        }}
+      />
+    </>
   );
 }
-
-    
