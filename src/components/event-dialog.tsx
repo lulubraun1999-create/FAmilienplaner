@@ -247,7 +247,7 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event
       if (memberIds.length === 0) return false;
       const participantIds = new Set(participants.map(p => p.userId));
       return memberIds.every(id => participantIds.has(id));
-  }, [participants, allFamilyMembers]);
+  }, [participants, allFamilyMembers, getGroupMembers]);
 
   return (
     <>

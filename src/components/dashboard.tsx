@@ -535,7 +535,7 @@ export default function Dashboard() {
         onDelete={handleDeleteEvent}
         event={selectedEvent}
         allFamilyMembers={allFamilyMembers} // Use allFamilyMembers to show people from other families
-        calendarGroups={[{id: 'all', name: 'Alle', members: (familyMembers || []).map(m => m.id)}, ...calendarGroups]}
+        calendarGroups={[{id: 'all', name: 'Alle', members: allFamilyMembers.map(m => m.id)}, ...calendarGroups]}
         locations={localLocations}
         onAddLocation={handleAddLocation}
         onDeleteLocation={handleDeleteLocation}
