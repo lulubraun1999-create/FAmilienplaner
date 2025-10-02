@@ -24,7 +24,7 @@ export default function Dashboard() {
     const newEventWithId: Event = {
       ...newEvent,
       id: `e${Date.now()}`,
-      calendarId: selectedCalendarId === 'all' ? 'c_immediate' : selectedCalendarId,
+      calendarId: selectedCalendarId === 'all' || selectedCalendarId === 'my_calendar' ? 'c_immediate' : selectedCalendarId,
     };
     setLocalEvents(prev => [...prev, newEventWithId]);
   };
@@ -33,21 +33,39 @@ export default function Dashboard() {
     if (selectedCalendarId === 'all') {
       return { id: 'all', name: 'Gesamte Familie', members: familyMembers.map(m => m.id) };
     }
+    if (selectedCalendarId === 'my_calendar') {
+      const me = familyMembers.find(m => m.id === 'me');
+      return { id: 'my_calendar', name: 'Mein Kalender', members: me ? [me.id] : [] };
+    }
     return calendarGroups.find(g => g.id === selectedCalendarId);
   }, [selectedCalendarId]);
 
   const filteredData = useMemo(() => {
     if (selectedCalendarId === 'all') {
-      const memberIdsInGroup = new Set(familyMembers.map(m => m.id));
-      const membersInGroup = familyMembers.filter(m => memberIdsInGroup.has(m.id));
-
       return {
         events: localEvents,
         tasks: localTasks,
         shoppingItems: localShoppingItems,
         dogPlanItems: localDogPlanItems,
-        members: membersInGroup
+        members: familyMembers
       };
+    }
+
+    if (selectedCalendarId === 'my_calendar') {
+        const meId = 'me';
+        const myEvents = localEvents.filter(event => event.participants.includes(meId));
+        const myTasks = localTasks.filter(task => task.assignedTo === meId);
+        const myShoppingItems = localShoppingItems.filter(item => item.addedBy === meId);
+        const myDogPlanItems = localDogPlanItems.filter(item => item.assignedTo === meId);
+        const meMember = familyMembers.find(m => m.id === meId);
+
+        return {
+            events: myEvents,
+            tasks: myTasks,
+            shoppingItems: myShoppingItems,
+            dogPlanItems: myDogPlanItems,
+            members: meMember ? [meMember] : []
+        };
     }
 
     const memberIdsInGroup = new Set(currentGroup?.members);

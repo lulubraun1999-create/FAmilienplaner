@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { CalendarDays, Users, LogOut } from 'lucide-react';
+import { CalendarDays, Users, User, LogOut } from 'lucide-react';
 import type { CalendarGroup } from '@/lib/types';
 import { familyMembers } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -35,6 +35,18 @@ export default function AppSidebar({ calendarGroups, selectedCalendarId, onCalen
             >
               <Users className="h-4 w-4" />
               Gesamte Familie
+            </button>
+          </li>
+           <li>
+            <button
+              onClick={() => onCalendarChange('my_calendar')}
+              className={cn(
+                'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-secondary',
+                selectedCalendarId === 'my_calendar' && 'bg-secondary'
+              )}
+            >
+              <User className="h-4 w-4" />
+              Mein Kalender
             </button>
           </li>
           {calendarGroups.map((group) => (
