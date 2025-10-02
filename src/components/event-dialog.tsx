@@ -193,7 +193,7 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event
   };
   
   const toggleGroup = (memberIds: readonly string[]) => {
-    const allSelected = memberIds.every(id => selectedParticipants.includes(id));
+    const allSelected = memberIds.length > 0 && memberIds.every(id => selectedParticipants.includes(id));
     if (allSelected) {
       setSelectedParticipants(prev => prev.filter(id => !memberIds.includes(id)));
     } else {
@@ -311,7 +311,7 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event
                         <React.Fragment key={group.id}>
                           <Label className="flex items-center gap-2 p-2 rounded-md hover:bg-accent font-semibold">
                             <Checkbox
-                              checked={group.members.every(id => selectedParticipants.includes(id))}
+                              checked={group.members.length > 0 && group.members.every(id => selectedParticipants.includes(id))}
                               onCheckedChange={() => toggleGroup(group.members)}
                             />
                             <span>{group.name}</span>
