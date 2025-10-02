@@ -20,6 +20,7 @@ import WeekView from './week-view';
 import DayView from './day-view';
 import TaskDialog from './task-dialog';
 import { familyData, allFamilyMembers } from '@/lib/family-data';
+import { updateProfile } from 'firebase/auth';
 
 type CalendarViewType = 'month' | 'week' | 'day';
 
@@ -68,7 +69,7 @@ export default function Dashboard() {
     
 
     useEffect(() => {
-    if (firestore && user && familyName && !eventsLoading && !isDataPopulated && eventsData?.length === 0) {
+    if (firestore && user && familyName && !eventsLoading && eventsData?.length === 0 && !isDataPopulated) {
       setIsDataPopulated(true); // Prevent this from running multiple times
       
       const populateFirestore = async () => {
@@ -115,7 +116,6 @@ export default function Dashboard() {
   }, [firestore, user, familyName, eventsLoading, isDataPopulated, eventsData]);
 
   const calendarGroups: CalendarGroup[] = useMemo(() => {
-    // Generate groups from the static family data
     return familyData.map(family => ({
         id: family.id,
         name: family.name,
@@ -367,9 +367,7 @@ export default function Dashboard() {
   
   const handleUpdateProfile = (updatedMember: FamilyMember) => {
      if (user) {
-        // Only update the display name in Firebase Auth, as we don't have a user document
         updateProfile(user, { displayName: updatedMember.name });
-        // The local state will update automatically via the user object listener
      }
   };
 
@@ -439,7 +437,8 @@ export default function Dashboard() {
             groupName={currentGroup?.name || 'Vierklang'}
             groupMembers={filteredData.members}
             onAddEvent={() => handleOpenEventDialog()}
-            eventsToSync={filteredData.events}
+            eventsToSync={localEvents} // Pass all events for a consistent "my calendar" export
+            me={me}
           />
           <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
             <Tabs defaultValue="calendar" className="h-full">
@@ -535,7 +534,7 @@ export default function Dashboard() {
         onSave={handleSaveEvent}
         onDelete={handleDeleteEvent}
         event={selectedEvent}
-        allFamilyMembers={familyMembers}
+        allFamilyMembers={allFamilyMembers} // Use allFamilyMembers to show people from other families
         calendarGroups={[{id: 'all', name: 'Alle', members: (familyMembers || []).map(m => m.id)}, ...calendarGroups]}
         locations={localLocations}
         onAddLocation={handleAddLocation}

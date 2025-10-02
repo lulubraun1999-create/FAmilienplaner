@@ -16,27 +16,40 @@ interface AppHeaderProps {
   groupMembers: FamilyMember[];
   onAddEvent: () => void;
   eventsToSync: Event[];
+  me?: FamilyMember;
 }
 
-export default function AppHeader({ groupName, groupMembers, onAddEvent, eventsToSync }: AppHeaderProps) {
+export default function AppHeader({ groupName, groupMembers, onAddEvent, eventsToSync, me }: AppHeaderProps) {
   const { toast } = useToast();
   const { setTheme } = useTheme();
   const [isSyncing, setIsSyncing] = useState(false);
 
   const handleSync = async () => {
+    if (!me) {
+        toast({
+            title: 'Fehler',
+            description: 'Benutzer nicht gefunden. Export nicht möglich.',
+            variant: 'destructive',
+        });
+        return;
+    }
+
     setIsSyncing(true);
     toast({
       title: 'Kalender wird exportiert...',
       description: 'Deine Termine werden in eine .ics-Datei umgewandelt.',
     });
     try {
-      const icalData = await exportCalendar(eventsToSync, groupName);
+      // Always export events where the current user is a participant
+      const myEvents = eventsToSync.filter(event => event.participants.some(p => p.userId === me.id));
+      const calendarName = `Mein Kalender (${me.name})`;
+      const icalData = await exportCalendar(myEvents, calendarName);
       
       const blob = new Blob([icalData], { type: 'text/calendar' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `familienkalender_${groupName.toLowerCase().replace(/ /g, '_')}.ics`;
+      a.download = `mein_kalender.ics`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -44,7 +57,7 @@ export default function AppHeader({ groupName, groupMembers, onAddEvent, eventsT
 
       toast({
         title: 'Export erfolgreich!',
-        description: 'Die Kalender-Datei wurde heruntergeladen.',
+        description: 'Deine persönliche Kalender-Datei wurde heruntergeladen.',
       });
 
     } catch (error) {
@@ -75,7 +88,7 @@ export default function AppHeader({ groupName, groupMembers, onAddEvent, eventsT
         <div className="flex items-center gap-2">
            <Button variant="ghost" size="icon" onClick={handleSync} disabled={isSyncing}>
             {isSyncing ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Download className="h-5 w-5" />}
-            <span className="sr-only">Kalender exportieren</span>
+            <span className="sr-only">Meinen Kalender exportieren</span>
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
