@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import {
   format,
   startOfMonth,
@@ -10,7 +10,6 @@ import {
   eachDayOfInterval,
   isSameMonth,
   isToday,
-  getDay,
   isSameDay,
 } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -25,10 +24,11 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/t
 interface CalendarViewProps {
   events: Event[];
   locations: Location[];
+  onEventClick: (event: Event) => void;
 }
 
-export default function CalendarView({ events, locations }: CalendarViewProps) {
-  const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
+export default function CalendarView({ events, locations, onEventClick }: CalendarViewProps) {
+  const [currentMonth, setCurrentMonth] = React.useState(startOfMonth(new Date()));
 
   const daysInMonth = eachDayOfInterval({
     start: startOfWeek(currentMonth, { locale: de }),
@@ -83,18 +83,21 @@ export default function CalendarView({ events, locations }: CalendarViewProps) {
                       const location = event.locationId ? getLocationById(event.locationId) : null;
                       return (
                         <Tooltip key={event.id}>
-                          <TooltipTrigger className='w-full'>
-                            <Badge className='w-full truncate text-xs flex items-center justify-start gap-2' variant='secondary'>
-                              <span>{format(new Date(event.start.toString()), 'HH:mm')}</span>
-                              <span className='truncate'>{event.title}</span>
-                              {location && <MapPin className="h-3 w-3 flex-shrink-0" />}
-                            </Badge>
+                          <TooltipTrigger asChild>
+                            <button className='w-full text-left' onClick={() => onEventClick(event)}>
+                                <Badge className='w-full truncate text-xs flex items-center justify-start gap-2 cursor-pointer' variant='secondary'>
+                                  <span>{format(new Date(event.start.toString()), 'HH:mm')}</span>
+                                  <span className='truncate'>{event.title}</span>
+                                  {location && <MapPin className="h-3 w-3 flex-shrink-0" />}
+                                </Badge>
+                            </button>
                           </TooltipTrigger>
                           <TooltipContent>
                             <p className='font-bold'>{event.title}</p>
                             <p>{format(new Date(event.start.toString()), 'HH:mm')} - {format(new Date(event.end.toString()), 'HH:mm')}</p>
                             {location && <p className='text-muted-foreground'>{location.name}: {location.street} {location.housenumber}, {location.postalcode} {location.city}</p>}
                             {event.description && <p className='text-sm italic mt-1'>{event.description}</p>}
+                            <p className='text-xs text-muted-foreground mt-2'>Klicken zum Bearbeiten</p>
                           </TooltipContent>
                         </Tooltip>
                       )

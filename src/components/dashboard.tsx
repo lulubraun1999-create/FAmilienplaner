@@ -9,111 +9,77 @@ import CalendarView from './calendar-view';
 import TaskList from './task-list';
 import ShoppingList from './shopping-list';
 import DogPlan from './dog-plan';
-import { calendarGroups, initialFamilyMembers, initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems, initialLocations } from '@/lib/data';
+import { calendarGroups, initialFamilyMembers } from '@/lib/data';
 import type { CalendarGroup, Event, Task, ShoppingListItem, FamilyMember, DogPlanItem, Location } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc, writeBatch, getDocs, addDoc } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import EventDialog from './event-dialog';
 
 export default function Dashboard() {
   const [selectedCalendarId, setSelectedCalendarId] = useState('all');
+  const { firestore } = useFirebase();
+  const familyName = 'Familie-Butz-Braun';
 
-  const { firestore, user } = useFirebase();
-
-  const familyName = 'Familie-Butz-Braun'; 
+  // State for dialogs
+  const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<Event | undefined>(undefined);
 
   const eventsRef = useMemoFirebase(() => firestore ? collection(firestore, `families/${familyName}/events`) : null, [firestore, familyName]);
   const tasksRef = useMemoFirebase(() => firestore ? collection(firestore, `families/${familyName}/tasks`) : null, [firestore, familyName]);
   const shoppingListRef = useMemoFirebase(() => firestore ? collection(firestore, `families/${familyName}/shoppingListItems`) : null, [firestore, familyName]);
   const dogPlanRef = useMemoFirebase(() => firestore ? collection(firestore, `families/${familyName}/dogPlan`) : null, [firestore, familyName]);
   const locationsRef = useMemoFirebase(() => firestore ? collection(firestore, `families/${familyName}/locations`) : null, [firestore, familyName]);
-  
+
   const { data: eventsData, isLoading: eventsLoading } = useCollection<Event>(eventsRef);
   const { data: tasksData, isLoading: tasksLoading } = useCollection<Task>(tasksRef);
   const { data: shoppingListData, isLoading: shoppingLoading } = useCollection<ShoppingListItem>(shoppingListRef);
   const { data: dogPlanData, isLoading: dogPlanLoading } = useCollection<DogPlanItem>(dogPlanRef);
   const { data: locationsData, isLoading: locationsLoading } = useCollection<Location>(locationsRef);
 
-
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>(initialFamilyMembers);
-  const [localEvents, setLocalEvents] = useState<Event[]>([]);
-  const [localTasks, setLocalTasks] = useState<Task[]>([]);
-  const [localShoppingItems, setLocalShoppingItems] = useState<ShoppingListItem[]>([]);
-  const [localDogPlanItems, setLocalDogPlanItems] = useState<DogPlanItem[]>([]);
-  const [localLocations, setLocalLocations] = useState<Location[]>([]);
-
-  useEffect(() => {
-    if (firestore && familyName && !eventsLoading && !tasksLoading && !shoppingLoading && !dogPlanLoading && !locationsLoading) {
-      const collections: { [key: string]: { ref: any; data: any[], existingData: any[] | null } } = {
-        events: { ref: eventsRef, data: initialEvents, existingData: eventsData },
-        tasks: { ref: tasksRef, data: initialTasks, existingData: tasksData },
-        shoppingListItems: { ref: shoppingListRef, data: initialShoppingListItems, existingData: shoppingListData },
-        dogPlan: { ref: dogPlanRef, data: initialDogPlanItems, existingData: dogPlanData },
-        locations: { ref: locationsRef, data: initialLocations, existingData: locationsData },
-      };
   
-      const populateFirestore = async () => {
-        const batch = writeBatch(firestore);
-        let hasWrites = false;
-  
-        for (const [key, { ref, data, existingData }] of Object.entries(collections)) {
-          if (ref && existingData && existingData.length === 0) {
-            console.log(`Populating ${key} collection...`);
-            data.forEach((item: any) => {
-              // item.id should exist now for all initial data
-              if(item.id) {
-                const docRef = doc(ref, item.id);
-                batch.set(docRef, item);
-              } else {
-                 const docRef = doc(ref);
-                 batch.set(docRef, item);
-              }
-            });
-            hasWrites = true;
-          }
-        }
-  
-        if (hasWrites) {
-          try {
-            await batch.commit();
-            console.log('Successfully populated initial data.');
-          } catch (error) {
-            console.error('Error populating initial data:', error);
-          }
-        }
-      };
-  
-      populateFirestore();
-    }
-  }, [firestore, familyName, eventsRef, tasksRef, shoppingListRef, dogPlanRef, locationsRef, eventsData, tasksData, shoppingListData, dogPlanData, locationsData, eventsLoading, tasksLoading, shoppingLoading, dogPlanLoading, locationsLoading]);
-
-
-  React.useEffect(() => {
-    if (eventsData) setLocalEvents(eventsData.map(e => ({...e, start: (e.start as any).toDate(), end: (e.end as any).toDate() })));
+  const localEvents = useMemo(() => {
+    if (!eventsData) return [];
+    return eventsData.map(e => ({...e, start: (e.start as any).toDate(), end: (e.end as any).toDate() }));
   }, [eventsData]);
 
-  React.useEffect(() => {
-    if (tasksData) setLocalTasks(tasksData.map(t => ({...t, dueDate: (t.dueDate as any).toDate()})))
+  const localTasks = useMemo(() => {
+    if (!tasksData) return [];
+    return tasksData.map(t => ({...t, dueDate: (t.dueDate as any).toDate()}));
   }, [tasksData]);
-
-  React.useEffect(() => {
-    if (shoppingListData) setLocalShoppingItems(shoppingListData);
-  }, [shoppingListData]);
-
-  React.useEffect(() => {
-    if (dogPlanData) setLocalDogPlanItems(dogPlanData);
-  }, [dogPlanData]);
-
-  React.useEffect(() => {
-    if (locationsData) setLocalLocations(locationsData);
-  }, [locationsData]);
+  
+  const localShoppingItems = useMemo(() => shoppingListData || [], [shoppingListData]);
+  const localDogPlanItems = useMemo(() => dogPlanData || [], [dogPlanData]);
+  const localLocations = useMemo(() => locationsData || [], [locationsData]);
 
 
-  const handleAddEvent = (newEvent: Omit<Event, 'id'>) => {
-    if (eventsRef) {
-      addDoc(eventsRef, newEvent);
-    }
+  const handleOpenEventDialog = (event?: Event) => {
+    setSelectedEvent(event);
+    setIsEventDialogOpen(true);
   };
   
+  const handleSaveEvent = (eventData: Omit<Event, 'id'> | Event) => {
+    if ('id' in eventData) {
+      // Update existing event
+      if (firestore && eventData.id) {
+        const eventDocRef = doc(eventsRef, eventData.id);
+        updateDoc(eventDocRef, eventData as Event);
+      }
+    } else {
+      // Add new event
+      if (eventsRef) {
+        addDoc(eventsRef, eventData);
+      }
+    }
+  };
+
+  const handleDeleteEvent = (eventId: string) => {
+    if (firestore) {
+      const eventDocRef = doc(eventsRef, eventId);
+      deleteDoc(eventDocRef);
+    }
+  };
+
   const handleAddLocation = async (newLocation: Omit<Location, 'id'>): Promise<string> => {
     if (locationsRef) {
       const docRef = await addDoc(locationsRef, newLocation);
@@ -138,22 +104,17 @@ export default function Dashboard() {
   }, [selectedCalendarId, familyMembers]);
 
   const filteredData = useMemo(() => {
-    const events = localEvents;
-    const tasks = localTasks;
-    const shoppingItems = localShoppingItems;
-    const dogPlanItems = localDogPlanItems;
-
     if (selectedCalendarId === 'all') {
-        return { events, tasks, shoppingItems, dogPlanItems, members: familyMembers };
+        return { events: localEvents, tasks: localTasks, shoppingItems: localShoppingItems, dogPlanItems: localDogPlanItems, members: familyMembers };
     }
     
     const meId = 'me'; // assuming 'me' is the current user's id
 
     if (selectedCalendarId === 'my_calendar') {
-        const myEvents = events.filter(event => event.participants.includes(meId));
-        const myTasks = tasks.filter(task => task.assignedTo === meId);
-        const myShoppingItems = shoppingItems.filter(item => item.addedBy === meId);
-        const myDogPlanItems = dogPlanItems.filter(item => item.assignedTo === meId);
+        const myEvents = localEvents.filter(event => event.participants.includes(meId));
+        const myTasks = localTasks.filter(task => task.assignedTo === meId);
+        const myShoppingItems = localShoppingItems.filter(item => item.addedBy === meId);
+        const myDogPlanItems = localDogPlanItems.filter(item => item.assignedTo === meId);
         const meMember = familyMembers.find(m => m.id === meId);
 
         return {
@@ -167,10 +128,10 @@ export default function Dashboard() {
 
     const memberIdsInGroup = new Set(currentGroup?.members);
     
-    const groupEvents = events.filter(event => event.participants.some(p => memberIdsInGroup.has(p)));
-    const groupTasks = tasks.filter(task => memberIdsInGroup.has(task.assignedTo));
-    const groupShoppingItems = shoppingItems.filter(item => memberIdsInGroup.has(item.addedBy));
-    const groupDogPlanItems = dogPlanItems.filter(item => item.assignedTo && memberIdsInGroup.has(item.assignedTo));
+    const groupEvents = localEvents.filter(event => event.participants.some(p => memberIdsInGroup.has(p)));
+    const groupTasks = localTasks.filter(task => memberIdsInGroup.has(task.assignedTo));
+    const groupShoppingItems = localShoppingItems.filter(item => memberIdsInGroup.has(item.addedBy));
+    const groupDogPlanItems = localDogPlanItems.filter(item => item.assignedTo && memberIdsInGroup.has(item.assignedTo));
     const membersInGroup = familyMembers.filter(m => memberIdsInGroup.has(m.id));
 
     return {
@@ -184,57 +145,70 @@ export default function Dashboard() {
 
 
   return (
-    <div className="flex h-screen w-full bg-background font-body text-foreground">
-      <AppSidebar
-        calendarGroups={calendarGroups}
-        selectedCalendarId={selectedCalendarId}
-        onCalendarChange={setSelectedCalendarId}
-        familyMembers={familyMembers}
-        onUpdateProfile={handleUpdateProfile}
-      />
-      <div className="flex flex-1 flex-col">
-        <AppHeader
-          groupName={currentGroup?.name || 'Familienplaner'}
-          groupMembers={filteredData.members}
-          onAddEvent={handleAddEvent}
-          locations={localLocations}
-          onAddLocation={handleAddLocation}
+    <>
+      <div className="flex h-screen w-full bg-background font-body text-foreground">
+        <AppSidebar
+          calendarGroups={calendarGroups}
+          selectedCalendarId={selectedCalendarId}
+          onCalendarChange={setSelectedCalendarId}
+          familyMembers={familyMembers}
+          onUpdateProfile={handleUpdateProfile}
         />
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <Tabs defaultValue="calendar" className="h-full">
-            <TabsList className="grid w-full grid-cols-4 md:w-auto md:inline-grid md:grid-cols-4">
-              <TabsTrigger value="calendar">
-                <Calendar className="mr-2 h-4 w-4" />
-                Kalender
-              </TabsTrigger>
-              <TabsTrigger value="tasks">
-                <ListTodo className="mr-2 h-4 w-4" />
-                Aufgaben
-              </TabsTrigger>
-              <TabsTrigger value="shopping">
-                <ShoppingCart className="mr-2 h-4 w-4" />
-                Einkaufsliste
-              </TabsTrigger>
-              <TabsTrigger value="dog-plan">
-                <Dog className="mr-2 h-4 w-4" />
-                Hundeplan
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="calendar" className="mt-4 rounded-lg">
-              <CalendarView events={filteredData.events} locations={localLocations} />
-            </TabsContent>
-            <TabsContent value="tasks" className="mt-4">
-              <TaskList tasks={filteredData.tasks} members={familyMembers} />
-            </TabsContent>
-            <TabsContent value="shopping" className="mt-4">
-              <ShoppingList items={filteredData.shoppingItems} members={familyMembers} />
-            </TabsContent>
-            <TabsContent value="dog-plan" className="mt-4">
-              <DogPlan items={filteredData.dogPlanItems} members={familyMembers} />
-            </TabsContent>
-          </Tabs>
-        </main>
+        <div className="flex flex-1 flex-col">
+          <AppHeader
+            groupName={currentGroup?.name || 'Familienplaner'}
+            groupMembers={filteredData.members}
+            onAddEvent={() => handleOpenEventDialog()}
+            locations={localLocations}
+            onAddLocation={handleAddLocation}
+          />
+          <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+            <Tabs defaultValue="calendar" className="h-full">
+              <TabsList className="grid w-full grid-cols-4 md:w-auto md:inline-grid md:grid-cols-4">
+                <TabsTrigger value="calendar">
+                  <Calendar className="mr-2 h-4 w-4" />
+                  Kalender
+                </TabsTrigger>
+                <TabsTrigger value="tasks">
+                  <ListTodo className="mr-2 h-4 w-4" />
+                  Aufgaben
+                </TabsTrigger>
+                <TabsTrigger value="shopping">
+                  <ShoppingCart className="mr-2 h-4 w-4" />
+                  Einkaufsliste
+                </TabsTrigger>
+                <TabsTrigger value="dog-plan">
+                  <Dog className="mr-2 h-4 w-4" />
+                  Hundeplan
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="calendar" className="mt-4 rounded-lg">
+                <CalendarView events={filteredData.events} locations={localLocations} onEventClick={handleOpenEventDialog} />
+              </TabsContent>
+              <TabsContent value="tasks" className="mt-4">
+                <TaskList tasks={filteredData.tasks} members={familyMembers} />
+              </TabsContent>
+              <TabsContent value="shopping" className="mt-4">
+                <ShoppingList items={filteredData.shoppingItems} members={familyMembers} />
+              </TabsContent>
+              <TabsContent value="dog-plan" className="mt-4">
+                <DogPlan items={filteredData.dogPlanItems} members={familyMembers} />
+              </TabsContent>
+            </Tabs>
+          </main>
+        </div>
       </div>
-    </div>
+      <EventDialog
+        isOpen={isEventDialogOpen}
+        setIsOpen={setIsEventDialogOpen}
+        onSave={handleSaveEvent}
+        onDelete={handleDeleteEvent}
+        event={selectedEvent}
+        allFamilyMembers={familyMembers}
+        calendarGroups={[{id: 'all', name: 'Alle', members: familyMembers.map(m => m.id)}, ...calendarGroups]}
+        locations={localLocations}
+        onAddLocation={handleAddLocation}
+      />
+    </>
   );
 }

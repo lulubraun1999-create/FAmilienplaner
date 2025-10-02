@@ -3,24 +3,20 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Plus, Bell, RefreshCw, Moon, Sun } from 'lucide-react';
-import type { FamilyMember, Event, CalendarGroup, Location } from '@/lib/types';
-import EventDialog from '../event-dialog';
-import { useState } from 'react';
+import type { FamilyMember, Location } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useTheme } from 'next-themes';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { calendarGroups, initialFamilyMembers } from '@/lib/data';
 
 interface AppHeaderProps {
   groupName: string;
   groupMembers: FamilyMember[];
-  onAddEvent: (event: Omit<Event, 'id'>) => void;
+  onAddEvent: () => void;
   locations: Location[];
   onAddLocation: (location: Omit<Location, 'id'>) => Promise<string>;
 }
 
-export default function AppHeader({ groupName, groupMembers, onAddEvent, locations, onAddLocation }: AppHeaderProps) {
-  const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
+export default function AppHeader({ groupName, groupMembers, onAddEvent }: AppHeaderProps) {
   const { toast } = useToast();
   const { setTheme } = useTheme();
 
@@ -74,21 +70,12 @@ export default function AppHeader({ groupName, groupMembers, onAddEvent, locatio
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button onClick={() => setIsEventDialogOpen(true)}>
+          <Button onClick={onAddEvent}>
             <Plus className="-ml-1 mr-2 h-5 w-5" />
             Ereignis erstellen
           </Button>
         </div>
       </header>
-      <EventDialog
-        isOpen={isEventDialogOpen}
-        setIsOpen={setIsEventDialogOpen}
-        onSave={onAddEvent}
-        allFamilyMembers={initialFamilyMembers}
-        calendarGroups={[{id: 'all', name: 'Alle', members: initialFamilyMembers.map(m => m.id)}, ...calendarGroups]}
-        locations={locations}
-        onAddLocation={onAddLocation}
-      />
     </>
   );
 }

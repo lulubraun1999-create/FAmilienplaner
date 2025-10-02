@@ -14,7 +14,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Calendar } from './ui/calendar';
-import { CalendarIcon, Clock, Sparkles, Loader2, Users, FileText, MapPin } from 'lucide-react';
+import { CalendarIcon, Clock, Sparkles, Loader2, Users, FileText, MapPin, Trash2 } from 'lucide-react';
 import { format, set, startOfDay, endOfDay, differenceInMinutes, isAfter } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -27,11 +27,14 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Checkbox } from './ui/checkbox';
 import { Separator } from './ui/separator';
 import LocationDialog from './location-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
+
 
 interface EventDialogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  onSave: (event: Omit<Event, 'id'>) => void;
+  onSave: (event: Omit<Event, 'id'> | Event) => void;
+  onDelete: (eventId: string) => void;
   event?: Event;
   allFamilyMembers: FamilyMember[];
   calendarGroups: CalendarGroup[];
@@ -39,23 +42,56 @@ interface EventDialogProps {
   onAddLocation: (location: Omit<Location, 'id'>) => Promise<string>;
 }
 
-export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamilyMembers, calendarGroups, locations, onAddLocation }: EventDialogProps) {
-  const [title, setTitle] = useState(event?.title || '');
-  const [startDate, setStartDate] = useState<Date | undefined>(event?.start ? new Date(event.start.toString()) : new Date());
-  const [endDate, setEndDate] = useState<Date | undefined>(event?.end ? new Date(event.end.toString()): new Date()));
-  const [startTime, setStartTime] = useState(event ? format(new Date(event.start.toString()), 'HH:mm') : '10:00');
-  const [endTime, setEndTime] = useState(event ? format(new Date(event.end.toString()), 'HH:mm') : '11:00');
-  const [isAllDay, setIsAllDay] = useState(event?.allDay || false);
-  const [locationId, setLocationId] = useState(event?.locationId || '');
-  const [description, setDescription] = useState(event?.description || '');
-  const [selectedParticipants, setSelectedParticipants] = useState<string[]>(event?.participants || []);
+export default function EventDialog({ isOpen, setIsOpen, onSave, onDelete, event, allFamilyMembers, calendarGroups, locations, onAddLocation }: EventDialogProps) {
+  const [title, setTitle] = useState('');
+  const [startDate, setStartDate] = useState<Date | undefined>(new Date());
+  const [endDate, setEndDate] = useState<Date | undefined>(new Date());
+  const [startTime, setStartTime] = useState('10:00');
+  const [endTime, setEndTime] = useState('11:00');
+  const [isAllDay, setIsAllDay] = useState(false);
+  const [locationId, setLocationId] = useState('');
+  const [description, setDescription] = useState('');
+  const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
   
   const [preferredTime, setPreferredTime] = useState('afternoon');
   const [suggestions, setSuggestions] = useState<Awaited<ReturnType<typeof getAISuggestions>>['suggestions']>([]);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
+  
 
+  const resetForm = () => {
+      setTitle('');
+      const today = new Date();
+      setStartDate(today);
+      setEndDate(today);
+      setStartTime('10:00');
+      setEndTime('11:00');
+      setIsAllDay(false);
+      setLocationId('');
+      setDescription('');
+      setSelectedParticipants([]);
+      setSuggestions([]);
+  }
+
+  useEffect(() => {
+    if (isOpen) {
+      if (event) {
+        setTitle(event.title);
+        setStartDate(event.start ? new Date(event.start.toString()) : new Date());
+        setEndDate(event.end ? new Date(event.end.toString()) : new Date());
+        setStartTime(format(new Date(event.start.toString()), 'HH:mm'));
+        setEndTime(format(new Date(event.end.toString()), 'HH:mm'));
+        setIsAllDay(event.allDay || false);
+        setLocationId(event.locationId || '');
+        setDescription(event.description || '');
+        setSelectedParticipants(event.participants ? [...event.participants] : []);
+      } else {
+        resetForm();
+      }
+    }
+  }, [event, isOpen]);
+  
   const handleSave = () => {
     if (!title || !startDate || !endDate) return;
     
@@ -78,55 +114,37 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamil
         }
     }
 
-
-    onSave({
+    const eventData = {
       title,
       start: startDateTime,
       end: endDateTime,
-      locationId: locationId,
+      locationId,
       description,
       participants: selectedParticipants,
       allDay: isAllDay,
-    });
-    setIsOpen(false);
-    resetForm();
-  };
-  
-  const resetForm = () => {
-      setTitle('');
-      const today = new Date();
-      setStartDate(today);
-      setEndDate(today);
-      setStartTime('10:00');
-      setEndTime('11:00');
-      setIsAllDay(false);
-      setLocationId('');
-      setDescription('');
-      setSelectedParticipants([]);
-      setSuggestions([]);
-  }
+    };
 
-  useEffect(() => {
-    if (event) {
-      setTitle(event.title);
-      setStartDate(event.start ? new Date(event.start.toString()) : new Date());
-      setEndDate(event.end ? new Date(event.end.toString()) : new Date());
-      setStartTime(format(new Date(event.start.toString()), 'HH:mm'));
-      setEndTime(format(new Date(event.end.toString()), 'HH:mm'));
-      setIsAllDay(event.allDay || false);
-      setLocationId(event.locationId || '');
-      setDescription(event.description || '');
-      setSelectedParticipants(event.participants);
+    if (event?.id) {
+        onSave({ id: event.id, ...eventData });
     } else {
-      resetForm();
+        onSave(eventData);
     }
-  }, [event, isOpen]);
+    
+    setIsOpen(false);
+  };
 
   useEffect(() => {
     if (startDate && (!endDate || endDate < startDate)) {
       setEndDate(startDate);
     }
   }, [startDate, endDate]);
+
+  const handleDelete = () => {
+    if (event?.id) {
+      onDelete(event.id);
+      setIsOpen(false);
+    }
+  }
 
 
   const handleGetSuggestions = () => {
@@ -364,9 +382,35 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, allFamil
               </div>
             )}
           </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Abbrechen</Button>
-            <Button type="submit" onClick={handleSave}>Speichern</Button>
+          <DialogFooter className='justify-between'>
+            <div>
+            {event && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" type="button">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Löschen
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Bist du sicher?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Diese Aktion kann nicht rückgängig gemacht werden. Dadurch wird das Ereignis dauerhaft gelöscht.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete}>Löschen</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+            </div>
+            <div className='flex gap-2'>
+              <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Abbrechen</Button>
+              <Button type="submit" onClick={handleSave}>Speichern</Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
