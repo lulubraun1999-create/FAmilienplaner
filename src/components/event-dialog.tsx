@@ -14,7 +14,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Calendar } from './ui/calendar';
-import { CalendarIcon, Clock, Sparkles, Loader2 } from 'lucide-react';
+import { CalendarIcon, Clock, Sparkles, Loader2, Users, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -23,6 +23,9 @@ import { getAISuggestions } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Badge } from './ui/badge';
+import { Textarea } from './ui/textarea';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { Checkbox } from './ui/checkbox';
 
 interface EventDialogProps {
   isOpen: boolean;
@@ -98,6 +101,14 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, particip
       setStartTime(format(suggestedDate, 'HH:mm'));
   }
 
+  const toggleParticipant = (participantId: string) => {
+    setSelectedParticipants(prev => 
+      prev.includes(participantId) 
+        ? prev.filter(id => id !== participantId)
+        : [...prev, participantId]
+    );
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-[625px]">
@@ -132,7 +143,7 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, particip
                 </div>
             </div>
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
+           <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="duration" className="text-right">Dauer (Minuten)</Label>
               <Input id="duration" type="number" value={duration} onChange={(e) => setDuration(parseInt(e.target.value))} className="col-span-3" />
           </div>
@@ -140,6 +151,52 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, particip
             <Label htmlFor="location" className="text-right">Ort</Label>
             <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} className="col-span-3" />
           </div>
+
+          <div className="grid grid-cols-4 items-start gap-4">
+            <Label className="text-right pt-2 flex items-center gap-2 justify-end">
+              <Users className="h-4 w-4"/>
+              Teilnehmer
+            </Label>
+            <div className="col-span-3">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                    <span className="truncate">
+                      {selectedParticipants.length > 0 
+                        ? selectedParticipants.map(id => participants.find(p => p.id === id)?.name).join(', ')
+                        : "Teilnehmer auswählen"}
+                    </span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <div className="flex flex-col gap-1 p-2">
+                    {participants.map(p => (
+                      <Label key={p.id} className="flex items-center gap-2 p-2 rounded-md hover:bg-accent">
+                        <Checkbox 
+                          checked={selectedParticipants.includes(p.id)}
+                          onCheckedChange={() => toggleParticipant(p.id)}
+                        />
+                         <Avatar className="h-6 w-6">
+                          <AvatarImage src={p.avatar.imageUrl} alt={p.name} data-ai-hint={p.avatar.imageHint}/>
+                          <AvatarFallback>{p.name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <span>{p.name}</span>
+                      </Label>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-4 items-start gap-4">
+            <Label htmlFor="description" className="text-right pt-2 flex items-center gap-2 justify-end">
+                <FileText className="h-4 w-4" />
+                Beschreibung
+            </Label>
+            <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} className="col-span-3" />
+          </div>
+
           <div className="grid grid-cols-4 items-start gap-4">
             <Label className="text-right pt-2">KI-Vorschläge</Label>
             <div className="col-span-3 space-y-2">
@@ -175,6 +232,7 @@ export default function EventDialog({ isOpen, setIsOpen, onSave, event, particip
           </div>
         </div>
         <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Abbrechen</Button>
           <Button type="submit" onClick={handleSave}>Speichern</Button>
         </DialogFooter>
       </DialogContent>
