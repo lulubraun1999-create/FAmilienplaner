@@ -49,8 +49,11 @@ export default function Dashboard() {
   const dogPlanRef = familyBasedRef('dogPlan');
   const locationsRef = familyBasedRef('locations');
   
-  const usersQuery = useMemoFirebase(() => 
-    (firestore && familyName) ? query(collection(firestore, 'users'), where('familyName', '==', familyName)) : null,
+  const usersQuery = useMemoFirebase(
+    () =>
+      firestore && familyName
+        ? query(collection(firestore, 'users'), where('familyName', '==', familyName))
+        : null,
     [firestore, familyName]
   );
   const { data: usersData, isLoading: usersLoading } = useCollection<FamilyMember>(usersQuery);
@@ -65,7 +68,8 @@ export default function Dashboard() {
     if (firestore && user && familyName && !eventsLoading && !isDataPopulated && eventsData && eventsData.length === 0) {
       const populateFirestore = async () => {
         // Check if data has already been populated by another user to avoid race conditions
-        const querySnapshot = await getDocs(eventsRef!);
+        if (!eventsRef) return;
+        const querySnapshot = await getDocs(eventsRef);
         if(!querySnapshot.empty) {
           setIsDataPopulated(true);
           return;
