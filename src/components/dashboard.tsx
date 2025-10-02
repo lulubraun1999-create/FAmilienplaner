@@ -9,10 +9,10 @@ import CalendarView from './calendar-view';
 import TaskList from './task-list';
 import ShoppingList from './shopping-list';
 import DogPlan from './dog-plan';
-import { initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems, initialLocations, calendarGroups, initialFamilyMembers } from '@/lib/data';
-import type { CalendarGroup, Event, Task, ShoppingListItem, FamilyMember, DogPlanItem, Location } from '@/lib/types';
+import { initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems, initialLocations } from '@/lib/data';
+import type { CalendarGroup, Event, Task, ShoppingListItem, FamilyMember, DogPlanItem, Location, Family } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser, useDoc, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch, setDoc, getDocs, query, where, getDoc } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch, setDoc, getDoc, arrayUnion, getDocs } from 'firebase/firestore';
 import EventDialog from './event-dialog';
 import { Button } from './ui/button';
 import WeekView from './week-view';
@@ -30,7 +30,26 @@ export default function Dashboard() {
   const { data: userData } = useDoc<FamilyMember>(userDocRef);
   const familyName = userData?.familyName;
 
-  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>(initialFamilyMembers);
+  const familyDocRef = useMemoFirebase(() => (firestore && familyName ? doc(firestore, `families`, familyName) : null), [firestore, familyName]);
+  const { data: familyData } = useDoc<Family>(familyDocRef);
+    
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
+
+  useEffect(() => {
+    const fetchFamilyMembers = async () => {
+        if (firestore && familyData && familyData.memberIds) {
+            const memberPromises = familyData.memberIds.map(id => getDoc(doc(firestore, 'users', id)));
+            const memberDocs = await Promise.all(memberPromises);
+            const members = memberDocs
+                .filter(docSnap => docSnap.exists())
+                .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as FamilyMember));
+            setFamilyMembers(members);
+        }
+    };
+    fetchFamilyMembers();
+  }, [familyData, firestore]);
+
+
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | undefined>(undefined);
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
@@ -102,7 +121,11 @@ export default function Dashboard() {
 
         batch.set(populateRef, { populatedBy: user.uid, populatedAt: new Date() });
 
-        await batch.commit();
+        try {
+            await batch.commit();
+        } catch(e) {
+            console.error("Error populating data", e);
+        }
         setIsDataPopulated(true);
       };
 
@@ -112,8 +135,13 @@ export default function Dashboard() {
 
   const me = useMemo(() => {
     // The first user in the static list is considered "me" for now
-    return familyMembers.find(m => m.id === 'me');
-  }, [familyMembers]);
+    return familyMembers.find(m => m.id === user?.uid);
+  }, [familyMembers, user]);
+
+  const calendarGroups = useMemo(() => {
+    if (!familyData) return [];
+    return familyData.groups || [];
+  }, [familyData]);
   
   const localEvents = useMemo(() => {
     if (!eventsData) return [];
@@ -139,7 +167,7 @@ export default function Dashboard() {
         // For new events, pre-fill the current user as a participant
         const newEventTemplate: Partial<Event> = {
             title: '',
-            participants: ['me'], // Use static 'me' id
+            participants: [user.uid],
             allDay: false,
             start: new Date(),
             end: new Date(new Date().getTime() + 60 * 60 * 1000), // 1 hour later
@@ -155,11 +183,23 @@ export default function Dashboard() {
     if ('id' in eventData && eventData.id) {
       if (firestore && eventsRef) {
         const eventDocRef = doc(eventsRef, eventData.id);
-        updateDoc(eventDocRef, eventData as any);
+        updateDoc(eventDocRef, eventData as any).catch(e => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: eventDocRef.path,
+                operation: 'update',
+                requestResourceData: eventData
+            }));
+        });
       }
     } else {
       if (firestore && eventsRef) {
-        addDoc(eventsRef, eventData);
+        addDoc(eventsRef, eventData).catch(e => {
+             errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: eventsRef.path,
+                operation: 'create',
+                requestResourceData: eventData
+            }));
+        });
       }
     }
   };
@@ -167,7 +207,12 @@ export default function Dashboard() {
   const handleDeleteEvent = (eventId: string) => {
     if (firestore && eventsRef) {
       const eventDocRef = doc(eventsRef, eventId);
-      deleteDoc(eventDocRef);
+      deleteDoc(eventDocRef).catch(e => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: eventDocRef.path,
+            operation: 'delete'
+          }));
+      });
     }
   };
 
@@ -181,11 +226,23 @@ export default function Dashboard() {
      if ('id' in dataWithAddedBy && dataWithAddedBy.id) {
       if (firestore && tasksRef) {
         const taskDocRef = doc(tasksRef, dataWithAddedBy.id);
-        updateDoc(taskDocRef, dataWithAddedBy as any);
+        updateDoc(taskDocRef, dataWithAddedBy as any).catch(e => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: taskDocRef.path,
+                operation: 'update',
+                requestResourceData: dataWithAddedBy
+            }));
+        });
       }
     } else {
       if (firestore && tasksRef) {
-        addDoc(tasksRef, dataWithAddedBy);
+        addDoc(tasksRef, dataWithAddedBy).catch(e => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: tasksRef.path,
+                operation: 'create',
+                requestResourceData: dataWithAddedBy
+            }));
+        });
       }
     }
   }
@@ -193,17 +250,29 @@ export default function Dashboard() {
   const handleDeleteTask = (taskId: string) => {
     if (firestore && tasksRef) {
       const taskDocRef = doc(tasksRef, taskId);
-      deleteDoc(taskDocRef);
+      deleteDoc(taskDocRef).catch(e => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: taskDocRef.path,
+                operation: 'delete'
+            }));
+      });
     }
   }
 
   const handleAddShoppingItem = (itemName: string, assignedTo?: string) => {
     if (shoppingListRef && user) {
-        addDoc(shoppingListRef, {
+        const newItem = {
             name: itemName,
             addedBy: user.uid,
             purchased: false,
             assignedTo: assignedTo || '',
+        };
+        addDoc(shoppingListRef, newItem).catch(e => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: shoppingListRef.path,
+                operation: 'create',
+                requestResourceData: newItem
+            }));
         });
     }
   };
@@ -211,14 +280,25 @@ export default function Dashboard() {
   const handleUpdateShoppingItem = (itemId: string, data: Partial<ShoppingListItem>) => {
     if (shoppingListRef) {
         const itemDocRef = doc(shoppingListRef, itemId);
-        updateDoc(itemDocRef, data);
+        updateDoc(itemDocRef, data).catch(e => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: itemDocRef.path,
+                operation: 'update',
+                requestResourceData: data
+            }));
+        });
     }
   };
 
   const handleDeleteShoppingItem = (itemId: string) => {
     if (shoppingListRef) {
         const itemDocRef = doc(shoppingListRef, itemId);
-        deleteDoc(itemDocRef);
+        deleteDoc(itemDocRef).catch(e => {
+             errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: itemDocRef.path,
+                operation: 'delete'
+            }));
+        });
     }
   };
 
@@ -233,20 +313,45 @@ export default function Dashboard() {
                     // Update existing item
                     const existingDoc = snapshot.docs[0];
                     const itemDocRef = doc(dogPlanRef, existingDoc.id);
-                    updateDoc(itemDocRef, { assignedTo: item.assignedTo });
+                    const updateData = { assignedTo: item.assignedTo };
+                    updateDoc(itemDocRef, updateData).catch(e => {
+                        errorEmitter.emit('permission-error', new FirestorePermissionError({
+                            path: itemDocRef.path,
+                            operation: 'update',
+                            requestResourceData: updateData
+                        }));
+                    });
                 } else if (item.assignedTo) { // Only add if someone is assigned
                     // Add new item (without placeholder id)
                     const { id, ...newItemData } = item;
-                    addDoc(dogPlanRef, newItemData);
+                    addDoc(dogPlanRef, newItemData).catch(e => {
+                        errorEmitter.emit('permission-error', new FirestorePermissionError({
+                            path: dogPlanRef.path,
+                            operation: 'create',
+                            requestResourceData: newItemData
+                        }));
+                    });
                 }
             });
         } else if (item.id) {
             // This is an existing item with a real Firestore ID.
             const itemDocRef = doc(dogPlanRef, item.id);
             if (item.assignedTo) {
-                updateDoc(itemDocRef, { assignedTo: item.assignedTo });
+                const updateData = { assignedTo: item.assignedTo };
+                updateDoc(itemDocRef, updateData).catch(e => {
+                    errorEmitter.emit('permission-error', new FirestorePermissionError({
+                        path: itemDocRef.path,
+                        operation: 'update',
+                        requestResourceData: updateData
+                    }));
+                });
             } else {
-                deleteDoc(itemDocRef);
+                deleteDoc(itemDocRef).catch(e => {
+                    errorEmitter.emit('permission-error', new FirestorePermissionError({
+                        path: itemDocRef.path,
+                        operation: 'delete'
+                    }));
+                });
             }
         }
     }
@@ -255,8 +360,17 @@ export default function Dashboard() {
 
   const handleAddLocation = async (newLocation: Omit<Location, 'id'>): Promise<string> => {
     if (locationsRef) {
-      const docRef = await addDoc(locationsRef, newLocation);
-      return docRef.id;
+      try {
+        const docRef = await addDoc(locationsRef, newLocation);
+        return docRef.id;
+      } catch (e) {
+         errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: locationsRef.path,
+            operation: 'create',
+            requestResourceData: newLocation
+         }));
+         return '';
+      }
     }
     return '';
   };
@@ -264,25 +378,34 @@ export default function Dashboard() {
   const handleUpdateProfile = (updatedMember: FamilyMember) => {
      if (firestore && user) {
       const userDocRef = doc(firestore, 'users', user.uid);
-      updateDoc(userDocRef, { name: updatedMember.name });
+      const updateData = { name: updatedMember.name };
+      updateDoc(userDocRef, updateData).catch(e => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: userDocRef.path,
+            operation: 'update',
+            requestResourceData: updateData
+        }));
+      });
     }
   };
 
   const currentGroup = useMemo(() => {
+    if (!familyData) {
+        return { id: 'all', name: 'Gesamte Familie', members: familyMembers.map(m => m.id) };
+    }
     if (selectedCalendarId === 'all') {
       return { id: 'all', name: 'Gesamte Familie', members: familyMembers.map(m => m.id) };
     }
     if (selectedCalendarId === 'my_calendar') {
-      const meMember = familyMembers.find(m => m.id === 'me'); // Use static id
-      return { id: 'my_calendar', name: 'Mein Kalender', members: meMember ? [meMember.id] : [] };
+      return { id: 'my_calendar', name: 'Mein Kalender', members: me ? [me.id] : [] };
     }
-    return calendarGroups.find(g => g.id === selectedCalendarId);
-  }, [selectedCalendarId, familyMembers]);
+    return familyData.groups?.find(g => g.id === selectedCalendarId);
+  }, [selectedCalendarId, familyMembers, me, familyData]);
 
   const filteredData = useMemo(() => {
-    const currentUserId = 'me'; // Use static ID
+    const currentUserId = user?.uid;
 
-    if (selectedCalendarId === 'all') {
+    if (selectedCalendarId === 'all' || !currentGroup) {
         return { events: localEvents, tasks: localTasks, shoppingItems: localShoppingItems, dogPlanItems: localDogPlanItems, members: familyMembers };
     }
     
@@ -317,7 +440,7 @@ export default function Dashboard() {
       dogPlanItems: groupDogPlanItems,
       members: membersInGroup
     };
-  }, [selectedCalendarId, currentGroup, localEvents, localTasks, localShoppingItems, localDogPlanItems, familyMembers]);
+  }, [selectedCalendarId, currentGroup, localEvents, localTasks, localShoppingItems, localDogPlanItems, familyMembers, user]);
 
 
   return (
@@ -447,3 +570,5 @@ export default function Dashboard() {
     </>
   );
 }
+
+    
