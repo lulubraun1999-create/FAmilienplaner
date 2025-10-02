@@ -36,6 +36,7 @@ export type Event = {
 export type Task = {
   id: string;
   title: string;
+  description?: string;
   assignedTo: FamilyMember['id'];
   dueDate: Timestamp | Date;
   priority: 'low' | 'medium' | 'high';

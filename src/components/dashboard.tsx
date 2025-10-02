@@ -12,11 +12,12 @@ import DogPlan from './dog-plan';
 import { initialFamilyMembers, initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems, initialLocations, calendarGroups } from '@/lib/data';
 import type { CalendarGroup, Event, Task, ShoppingListItem, FamilyMember, DogPlanItem, Location } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch, setDoc } from 'firebase/firestore';
 import EventDialog from './event-dialog';
 import { Button } from './ui/button';
 import WeekView from './week-view';
 import DayView from './day-view';
+import TaskDialog from './task-dialog';
 
 type CalendarViewType = 'month' | 'week' | 'day';
 
@@ -28,6 +29,9 @@ export default function Dashboard() {
   // State for dialogs
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | undefined>(undefined);
+  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | undefined>(undefined);
+  
   const [isDataPopulated, setIsDataPopulated] = useState(false);
 
   // Calendar view state
@@ -117,20 +121,47 @@ export default function Dashboard() {
       }
     } else {
       // Add new event
-      if (eventsRef) {
-        const newEventData = { ...eventData, id: doc(eventsRef).id };
-        const eventRef = doc(firestore, `families/${familyName}/events`, newEventData.id);
-        addDoc(eventsRef, eventData);
+      if (firestore && eventsRef) {
+        const newEventRef = doc(eventsRef);
+        setDoc(newEventRef, { ...eventData, id: newEventRef.id });
       }
     }
   };
 
   const handleDeleteEvent = (eventId: string) => {
-    if (firestore) {
+    if (firestore && eventsRef) {
       const eventDocRef = doc(eventsRef, eventId);
       deleteDoc(eventDocRef);
     }
   };
+
+  const handleOpenTaskDialog = (task?: Task) => {
+    setSelectedTask(task);
+    setIsTaskDialogOpen(true);
+  };
+
+  const handleSaveTask = (taskData: Omit<Task, 'id'> | Task) => {
+     if ('id' in taskData && taskData.id) {
+      // Update existing task
+      if (firestore) {
+        const taskDocRef = doc(tasksRef, taskData.id);
+        updateDoc(taskDocRef, taskData as any);
+      }
+    } else {
+      // Add new task
+      if (firestore && tasksRef) {
+        const newTaskRef = doc(tasksRef);
+        setDoc(newTaskRef, { ...taskData, id: newTaskRef.id });
+      }
+    }
+  }
+
+  const handleDeleteTask = (taskId: string) => {
+    if (firestore && tasksRef) {
+      const taskDocRef = doc(tasksRef, taskId);
+      deleteDoc(taskDocRef);
+    }
+  }
 
   const handleAddLocation = async (newLocation: Omit<Location, 'id'>): Promise<string> => {
     if (locationsRef) {
@@ -277,7 +308,12 @@ export default function Dashboard() {
                  )}
               </TabsContent>
               <TabsContent value="tasks" className="mt-4">
-                <TaskList tasks={filteredData.tasks} members={familyMembers} />
+                <TaskList 
+                    tasks={filteredData.tasks} 
+                    members={familyMembers}
+                    onTaskClick={handleOpenTaskDialog}
+                    onNewTaskClick={() => handleOpenTaskDialog()}
+                />
               </TabsContent>
               <TabsContent value="shopping" className="mt-4">
                 <ShoppingList items={filteredData.shoppingItems} members={familyMembers} />
@@ -299,6 +335,14 @@ export default function Dashboard() {
         calendarGroups={[{id: 'all', name: 'Alle', members: familyMembers.map(m => m.id)}, ...calendarGroups]}
         locations={localLocations}
         onAddLocation={handleAddLocation}
+      />
+      <TaskDialog
+        isOpen={isTaskDialogOpen}
+        setIsOpen={setIsTaskDialogOpen}
+        onSave={handleSaveTask}
+        onDelete={handleDeleteTask}
+        task={selectedTask}
+        familyMembers={familyMembers}
       />
     </>
   );
