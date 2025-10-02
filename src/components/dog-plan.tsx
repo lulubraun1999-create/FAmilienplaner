@@ -63,7 +63,7 @@ export default function DogPlan({ items, members }: DogPlanProps) {
   return (
     <Card className="shadow-lg">
       <CardHeader>
-        <CardTitle>Hundeplan - Gassi gehen</CardTitle>
+        <CardTitle>Hundeplan</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
