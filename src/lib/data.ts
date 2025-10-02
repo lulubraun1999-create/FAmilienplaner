@@ -31,36 +31,43 @@ tomorrow.setDate(tomorrow.getDate() + 1);
 const nextWeek = new Date(today);
 nextWeek.setDate(nextWeek.getDate() + 7);
 
-export const initialLocations: Omit<Location, 'id'>[] = [
-    { name: 'Sportplatz', street: 'Am Sportpark', housenumber: '1', postalcode: '12345', city: 'Musterstadt' },
-    { name: 'Dr. Smile', street: 'Hauptstraße', housenumber: '10', postalcode: '54321', city: 'Beispielburg' },
-    { name: 'Schule', street: 'Schulweg', housenumber: '2', postalcode: '12345', city: 'Musterstadt' },
+export const initialLocations: Location[] = [
+    { id: 'loc1', name: 'Sportplatz', street: 'Am Sportpark', housenumber: '1', postalcode: '12345', city: 'Musterstadt' },
+    { id: 'loc2', name: 'Dr. Smile', street: 'Hauptstraße', housenumber: '10', postalcode: '54321', city: 'Beispielburg' },
+    { id: 'loc3', name: 'Schule', street: 'Schulweg', housenumber: '2', postalcode: '12345', city: 'Musterstadt' },
 ];
 
-export const initialEvents: Omit<Event, 'id' | 'locationId'>[] = [
+export const initialEvents: Event[] = [
   {
+    id: 'evt1',
     title: 'Fußballtraining',
     start: new Date(new Date(today).setHours(17, 0, 0, 0)),
     end: new Date(new Date(today).setHours(18, 30, 0, 0)),
     participants: ['sister'],
+    locationId: 'loc1',
   },
   {
+    id: 'evt2',
     title: 'Zahnarzttermin',
     start: new Date(new Date(tomorrow).setHours(10, 0, 0, 0)),
     end: new Date(new Date(tomorrow).setHours(10, 30, 0, 0)),
     participants: ['me'],
+    locationId: 'loc2'
   },
   {
+    id: 'evt3',
     title: 'Kaffeeklatsch',
     start: new Date(new Date(tomorrow).setHours(15, 0, 0, 0)),
     end: new Date(new Date(tomorrow).setHours(17, 0, 0, 0)),
     participants: ['grandma', 'grandpa'],
   },
    {
+    id: 'evt4',
     title: 'Elternabend',
     start: new Date(new Date(nextWeek).setHours(19, 0, 0, 0)),
     end: new Date(new Date(nextWeek).setHours(20, 0, 0, 0)),
     participants: ['dad', 'mom'],
+    locationId: 'loc3',
   },
 ];
 

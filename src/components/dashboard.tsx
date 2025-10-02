@@ -42,30 +42,33 @@ export default function Dashboard() {
   const [localLocations, setLocalLocations] = useState<Location[]>([]);
 
   useEffect(() => {
-    if (firestore && familyName) {
-      const collections: { [key: string]: { ref: any; data: any[] } } = {
-        events: { ref: eventsRef, data: initialEvents },
-        tasks: { ref: tasksRef, data: initialTasks },
-        shoppingListItems: { ref: shoppingListRef, data: initialShoppingListItems },
-        dogPlan: { ref: dogPlanRef, data: initialDogPlanItems },
-        locations: { ref: locationsRef, data: initialLocations },
+    if (firestore && familyName && !eventsLoading && !tasksLoading && !shoppingLoading && !dogPlanLoading && !locationsLoading) {
+      const collections: { [key: string]: { ref: any; data: any[], existingData: any[] | null } } = {
+        events: { ref: eventsRef, data: initialEvents, existingData: eventsData },
+        tasks: { ref: tasksRef, data: initialTasks, existingData: tasksData },
+        shoppingListItems: { ref: shoppingListRef, data: initialShoppingListItems, existingData: shoppingListData },
+        dogPlan: { ref: dogPlanRef, data: initialDogPlanItems, existingData: dogPlanData },
+        locations: { ref: locationsRef, data: initialLocations, existingData: locationsData },
       };
   
       const populateFirestore = async () => {
         const batch = writeBatch(firestore);
         let hasWrites = false;
   
-        for (const [key, { ref, data }] of Object.entries(collections)) {
-          if (ref) {
-            const snapshot = await getDocs(ref);
-            if (snapshot.empty) {
-              console.log(`Populating ${key} collection...`);
-              data.forEach((item: any) => {
+        for (const [key, { ref, data, existingData }] of Object.entries(collections)) {
+          if (ref && existingData && existingData.length === 0) {
+            console.log(`Populating ${key} collection...`);
+            data.forEach((item: any) => {
+              // item.id should exist now for all initial data
+              if(item.id) {
                 const docRef = doc(ref, item.id);
                 batch.set(docRef, item);
-              });
-              hasWrites = true;
-            }
+              } else {
+                 const docRef = doc(ref);
+                 batch.set(docRef, item);
+              }
+            });
+            hasWrites = true;
           }
         }
   
@@ -81,7 +84,7 @@ export default function Dashboard() {
   
       populateFirestore();
     }
-  }, [firestore, familyName, eventsRef, tasksRef, shoppingListRef, dogPlanRef, locationsRef]);
+  }, [firestore, familyName, eventsRef, tasksRef, shoppingListRef, dogPlanRef, locationsRef, eventsData, tasksData, shoppingListData, dogPlanData, locationsData, eventsLoading, tasksLoading, shoppingLoading, dogPlanLoading, locationsLoading]);
 
 
   React.useEffect(() => {
