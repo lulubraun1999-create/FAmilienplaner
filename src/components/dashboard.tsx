@@ -9,7 +9,7 @@ import CalendarView from './calendar-view';
 import TaskList from './task-list';
 import ShoppingList from './shopping-list';
 import DogPlan from './dog-plan';
-import { initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems, initialLocations } from '@/lib/data';
+import { initialEvents, initialTasks, initialShoppingListItems, initialDogPlanItems, initialLocations, initialFamilyMembers } from '@/lib/data';
 import type { CalendarGroup, Event, Task, ShoppingListItem, FamilyMember, DogPlanItem, Location } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser, useDoc, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc, writeBatch, setDoc, getDoc, query, where, getDocs } from 'firebase/firestore';
@@ -29,13 +29,20 @@ export default function Dashboard() {
   const userDocRef = useMemoFirebase(() => (firestore && user?.uid ? doc(firestore, 'users', user.uid) : null), [firestore, user]);
   const { data: userData } = useDoc<FamilyMember>(userDocRef);
   const familyName = userData?.familyName;
-
-  const usersInFamilyQuery = useMemoFirebase(() => {
-    if (!firestore || !familyName) return null;
-    return query(collection(firestore, 'users'), where('familyName', '==', familyName));
-  }, [firestore, familyName]);
-
-  const { data: familyMembers } = useCollection<FamilyMember>(usersInFamilyQuery);
+  
+  // Use static family members to avoid permission issues
+  const familyMembers = useMemo(() => {
+    if (user) {
+        const currentUserInList = initialFamilyMembers.find(m => m.email === user.email);
+        if(currentUserInList) {
+            // make sure the current user has the correct id
+            currentUserInList.id = user.uid;
+            return initialFamilyMembers;
+        }
+        return [{ id: user.uid, name: user.displayName || 'Benutzer', email: user.email || '', avatar: {} }];
+    }
+    return [];
+  }, [user]);
 
 
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
@@ -67,17 +74,20 @@ export default function Dashboard() {
     useEffect(() => {
     if (firestore && user && familyName && !eventsLoading && !isDataPopulated && eventsData?.length === 0) {
       const populateFirestore = async () => {
-        if (!familyName.startsWith('Familie-Butz-Braun')) {
-            setIsDataPopulated(true);
-            return;
-        }
-
+        // This check prevents re-populating data on every load.
+        // We use a document in a meta collection to track if population has occurred.
         const populateRef = doc(firestore, `families/${familyName}/meta`, 'populated');
         const populateSnap = await getDoc(populateRef);
 
         if (populateSnap.exists()) {
           setIsDataPopulated(true);
           return;
+        }
+
+        // Only populate for the first family to avoid data clashes
+        if (familyName !== 'Familie-Butz-Braun') {
+            setIsDataPopulated(true);
+            return;
         }
 
         const batch = writeBatch(firestore);
@@ -107,6 +117,7 @@ export default function Dashboard() {
             batch.set(locationRef, location);
         });
 
+        // Mark that this family has been populated
         batch.set(populateRef, { populatedBy: user.uid, populatedAt: new Date() });
 
         try {
@@ -122,7 +133,6 @@ export default function Dashboard() {
   }, [firestore, user, familyName, eventsLoading, isDataPopulated, eventsData]);
 
   const me = useMemo(() => {
-    // The first user in the static list is considered "me" for now
     return familyMembers?.find(m => m.id === user?.uid);
   }, [familyMembers, user]);
 
@@ -555,6 +565,8 @@ export default function Dashboard() {
     </>
   );
 }
+
+    
 
     
 
